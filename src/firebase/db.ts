@@ -5,7 +5,7 @@ import {
 } from 'firebase/firestore'
 import { db } from './config'
 import type {
-  Supervisor, Teacher, Student, MemorizationRecord,
+  Supervisor, Teacher, Student, MemorizationRecord, MemorizationSection,
   AttendanceRecord, ScheduleNote, ScheduleConfig, WeeklyAward,
 } from '../types'
 import { calcTotalPoints } from '../utils/pointsCalculator'
@@ -363,29 +363,43 @@ export async function setWeeklyAward(data: Omit<WeeklyAward, 'id'>): Promise<voi
 
 // ─── Public Stats ─────────────────────────────────────────────────────────────
 
+const BOOK_LABELS: Record<string, string> = {
+  juzAmma: 'جزء عم',
+  juzTabarak: 'جزء تبارك',
+  jazariyya: 'متن الجزرية',
+  fortyHadith: 'الأربعين النووية',
+  rahbiyya: 'متن الرحبية',
+  zubd: 'متن الزبد',
+}
+
 export async function getPublicStats() {
   const [studentsSnap, memSnap] = await Promise.all([
     getDocs(collection(db, 'students')),
     getDocs(collection(db, 'memorization')),
   ])
 
-  const students = studentsSnap.docs.map(d => d.data() as Student)
+  const studentMap = new Map(studentsSnap.docs.map(d => [d.id, (d.data() as Student).name]))
   const mems = memSnap.docs.map(d => d.data() as MemorizationRecord)
 
   let totalPages = 0
   let totalVerses = 0
   let totalHadith = 0
   let totalCompletedMutoon = 0
-  let totalStudents = students.length
+  const totalStudents = studentsSnap.size
+  const completions: Array<{ studentName: string; bookName: string }> = []
 
   for (const m of mems) {
     totalPages += (m.juzAmma?.current ?? 0) + (m.juzTabarak?.current ?? 0)
     totalVerses += (m.jazariyya?.current ?? 0) + (m.rahbiyya?.current ?? 0) + (m.zubd?.current ?? 0)
     totalHadith += m.fortyHadith?.current ?? 0
-    const completed =
-      [m.juzAmma, m.juzTabarak, m.jazariyya, m.fortyHadith, m.rahbiyya, m.zubd]
-        .filter(s => s?.completed).length
-    totalCompletedMutoon += completed
+    const studentName = studentMap.get(m.studentId) ?? 'طالب'
+    for (const key of Object.keys(BOOK_LABELS)) {
+      const section = (m as unknown as Record<string, MemorizationSection>)[key]
+      if (section?.completed) {
+        totalCompletedMutoon++
+        completions.push({ studentName, bookName: BOOK_LABELS[key] })
+      }
+    }
   }
 
   const today = new Date()
@@ -413,5 +427,6 @@ export async function getPublicStats() {
     totalCompletedMutoon,
     todayStudents: todayPresent,
     totalAttendance,
+    completions,
   }
 }

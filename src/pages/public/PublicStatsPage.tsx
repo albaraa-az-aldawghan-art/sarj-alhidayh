@@ -5,6 +5,11 @@ import type { WeeklyAward } from '../../types'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import Logo from '../../components/common/Logo'
 
+interface Completion {
+  studentName: string
+  bookName: string
+}
+
 interface Stats {
   totalStudents: number
   totalPages: number
@@ -13,6 +18,7 @@ interface Stats {
   totalCompletedMutoon: number
   todayStudents: number
   totalAttendance: number
+  completions: Completion[]
 }
 
 export default function PublicStatsPage() {
@@ -93,6 +99,29 @@ export default function PublicStatsPage() {
             </div>
           </div>
         </div>
+
+        {/* Completed mutoon details */}
+        {stats && stats.completions.length > 0 && (
+          <div className="card">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-2 h-6 bg-gold rounded-full" />
+              <h2 className="font-bold text-brown-dark text-lg">المتون المكتملة</h2>
+              <span className="mr-auto bg-gold-xlight text-gold-dark text-xs font-bold px-2 py-0.5 rounded-full border border-gold-light">
+                {stats.completions.length}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {stats.completions.map((c, i) => (
+                <div key={i} className="flex items-center justify-between bg-cream rounded-xl px-4 py-2.5 border border-sand-light">
+                  <span className="font-bold text-brown-dark">{c.studentName}</span>
+                  <span className="text-xs bg-gold-xlight text-gold-dark font-semibold px-3 py-1 rounded-full border border-gold-light">
+                    {c.bookName}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* All weekly awards */}
         {awards.length > 0 && (
