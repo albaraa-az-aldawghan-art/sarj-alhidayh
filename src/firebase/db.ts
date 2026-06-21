@@ -245,20 +245,22 @@ async function syncStudentPoints(studentId: string): Promise<void> {
 
 // ─── Attendance ───────────────────────────────────────────────────────────────
 
-export async function getTodayAttendance(group: 'A' | 'B'): Promise<AttendanceRecord[]> {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const tomorrow = new Date(today)
-  tomorrow.setDate(tomorrow.getDate() + 1)
-
+export async function getAttendanceByDate(date: Date, group: 'A' | 'B'): Promise<AttendanceRecord[]> {
+  const start = new Date(date)
+  start.setHours(0, 0, 0, 0)
+  const end = new Date(date)
+  end.setHours(23, 59, 59, 999)
   const q = query(
     collection(db, 'attendance'),
-    where('date', '>=', Timestamp.fromDate(today)),
-    where('date', '<', Timestamp.fromDate(tomorrow))
+    where('date', '>=', Timestamp.fromDate(start)),
+    where('date', '<', Timestamp.fromDate(end))
   )
   const snap = await getDocs(q)
-  const all = snap.docs.map(d => mapDoc<AttendanceRecord>(d))
-  return all.filter(r => r.group === group)
+  return snap.docs.map(d => mapDoc<AttendanceRecord>(d)).filter(r => r.group === group)
+}
+
+export function getTodayAttendance(group: 'A' | 'B'): Promise<AttendanceRecord[]> {
+  return getAttendanceByDate(new Date(), group)
 }
 
 export async function getStudentAttendance(studentId: string): Promise<AttendanceRecord[]> {
@@ -276,7 +278,8 @@ export async function saveAttendance(records: Omit<AttendanceRecord, 'id'>[]): P
   const batch = writeBatch(db)
   for (const r of records) {
     const ref = doc(collection(db, 'attendance'))
-    batch.set(ref, { ...r, date: Timestamp.fromDate(new Date()) })
+    const d = r.date instanceof Date ? r.date : new Date(r.date)
+    batch.set(ref, { ...r, date: Timestamp.fromDate(d) })
   }
   await batch.commit()
 }
