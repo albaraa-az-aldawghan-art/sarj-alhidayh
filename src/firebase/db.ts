@@ -1,0 +1,396 @@
+import {
+  collection, doc, getDoc, getDocs, setDoc, addDoc,
+  updateDoc, deleteDoc, query, where, orderBy, Timestamp,
+  onSnapshot, writeBatch, serverTimestamp,
+} from 'firebase/firestore'
+import { db } from './config'
+import type {
+  Supervisor, Teacher, Student, MemorizationRecord,
+  AttendanceRecord, ScheduleNote, ScheduleConfig, WeeklyAward,
+} from '../types'
+import { calcTotalPoints } from '../utils/pointsCalculator'
+import { getWeekStart, getWeekEnd } from '../utils/dateHelpers'
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function toDate(v: unknown): Date {
+  if (!v) return new Date()
+  if (v instanceof Timestamp) return v.toDate()
+  if (v instanceof Date) return v
+  return new Date()
+}
+
+function mapDoc<T>(snap: { id: string; data: () => Record<string, unknown> }): T {
+  const data = snap.data()
+  const converted: Record<string, unknown> = { id: snap.id }
+  for (const key of Object.keys(data)) {
+    const val = data[key]
+    if (val instanceof Timestamp) {
+      converted[key] = val.toDate()
+    } else {
+      converted[key] = val
+    }
+  }
+  return converted as T
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
+export async function initializeFirstSupervisor() {
+  const snap = await getDocs(collection(db, 'supervisors'))
+  if (!snap.empty) return
+  await setDoc(doc(db, 'supervisors', 'ali_2001'), {
+    name: 'علي',
+    code: '2001',
+    createdAt: serverTimestamp(),
+  })
+}
+
+// ─── Auth helpers ─────────────────────────────────────────────────────────────
+
+export async function loginSupervisor(name: string, code: string): Promise<Supervisor | null> {
+  const q = query(
+    collection(db, 'supervisors'),
+    where('code', '==', code.trim()),
+    where('name', '==', name.trim())
+  )
+  const snap = await getDocs(q)
+  if (snap.empty) return null
+  return mapDoc<Supervisor>(snap.docs[0])
+}
+
+export async function loginTeacher(name: string, code: string): Promise<Teacher | null> {
+  const q = query(
+    collection(db, 'teachers'),
+    where('code', '==', code.trim()),
+    where('name', '==', name.trim())
+  )
+  const snap = await getDocs(q)
+  if (snap.empty) return null
+  return mapDoc<Teacher>(snap.docs[0])
+}
+
+export async function loginStudent(name: string, code: string): Promise<Student | null> {
+  const q = query(
+    collection(db, 'students'),
+    where('code', '==', code.trim()),
+    where('name', '==', name.trim())
+  )
+  const snap = await getDocs(q)
+  if (snap.empty) return null
+  return mapDoc<Student>(snap.docs[0])
+}
+
+// ─── Supervisors ──────────────────────────────────────────────────────────────
+
+export async function getSupervisors(): Promise<Supervisor[]> {
+  const snap = await getDocs(query(collection(db, 'supervisors'), orderBy('createdAt')))
+  return snap.docs.map(d => mapDoc<Supervisor>(d))
+}
+
+export async function addSupervisor(name: string, code: string): Promise<void> {
+  const existing = await getDocs(query(collection(db, 'supervisors'), where('code', '==', code)))
+  if (!existing.empty) throw new Error('الكود مستخدم من قبل')
+  await addDoc(collection(db, 'supervisors'), { name, code, createdAt: serverTimestamp() })
+}
+
+export async function updateSupervisor(id: string, name: string, code: string): Promise<void> {
+  await updateDoc(doc(db, 'supervisors', id), { name, code })
+}
+
+export async function deleteSupervisor(id: string): Promise<void> {
+  await deleteDoc(doc(db, 'supervisors', id))
+}
+
+// ─── Teachers ─────────────────────────────────────────────────────────────────
+
+export async function getTeachers(): Promise<Teacher[]> {
+  const snap = await getDocs(query(collection(db, 'teachers'), orderBy('createdAt')))
+  return snap.docs.map(d => mapDoc<Teacher>(d))
+}
+
+export async function addTeacher(data: Omit<Teacher, 'id' | 'createdAt'>): Promise<void> {
+  const existing = await getDocs(query(collection(db, 'teachers'), where('code', '==', data.code)))
+  if (!existing.empty) throw new Error('الكود مستخدم من قبل')
+  await addDoc(collection(db, 'teachers'), { ...data, createdAt: serverTimestamp() })
+}
+
+export async function updateTeacher(id: string, data: Partial<Teacher>): Promise<void> {
+  await updateDoc(doc(db, 'teachers', id), data)
+}
+
+export async function deleteTeacher(id: string): Promise<void> {
+  await deleteDoc(doc(db, 'teachers', id))
+}
+
+// ─── Students ─────────────────────────────────────────────────────────────────
+
+export async function getStudents(): Promise<Student[]> {
+  const snap = await getDocs(collection(db, 'students'))
+  const students = snap.docs.map(d => mapDoc<Student>(d))
+  return students.sort((a, b) => b.totalPoints - a.totalPoints)
+}
+
+export async function getStudentsBySupervisor(supervisorId: string): Promise<Student[]> {
+  const q = query(collection(db, 'students'), where('supervisorId', '==', supervisorId))
+  const snap = await getDocs(q)
+  const students = snap.docs.map(d => mapDoc<Student>(d))
+  return students.sort((a, b) => b.totalPoints - a.totalPoints)
+}
+
+export async function addStudent(data: Omit<Student, 'id' | 'createdAt' | 'totalPoints'>): Promise<string> {
+  const existing = await getDocs(query(collection(db, 'students'), where('code', '==', data.code)))
+  if (!existing.empty) throw new Error('الكود مستخدم من قبل')
+  const ref = await addDoc(collection(db, 'students'), {
+    ...data,
+    totalPoints: 0,
+    createdAt: serverTimestamp(),
+  })
+  await setDoc(doc(db, 'memorization', ref.id), defaultMemorization(ref.id))
+  return ref.id
+}
+
+export async function updateStudent(id: string, data: Partial<Student>): Promise<void> {
+  await updateDoc(doc(db, 'students', id), data)
+}
+
+export async function deleteStudent(id: string): Promise<void> {
+  const batch = writeBatch(db)
+  batch.delete(doc(db, 'students', id))
+  batch.delete(doc(db, 'memorization', id))
+  await batch.commit()
+}
+
+// ─── Memorization ─────────────────────────────────────────────────────────────
+
+function defaultSection() {
+  return { current: 0, completed: false, completedAt: null, bonusAwarded: false }
+}
+
+function defaultMemorization(studentId: string): Omit<MemorizationRecord, 'lastUpdatedAt'> & { lastUpdatedAt: ReturnType<typeof serverTimestamp> } {
+  return {
+    studentId,
+    juzAmma: defaultSection(),
+    juzTabarak: defaultSection(),
+    jazariyya: defaultSection(),
+    fortyHadith: defaultSection(),
+    rahbiyya: defaultSection(),
+    zubd: defaultSection(),
+    lastUpdatedBy: '',
+    lastUpdatedAt: serverTimestamp(),
+  }
+}
+
+export async function getMemorization(studentId: string): Promise<MemorizationRecord | null> {
+  const snap = await getDoc(doc(db, 'memorization', studentId))
+  if (!snap.exists()) return null
+  return mapDoc<MemorizationRecord>(snap)
+}
+
+export function subscribeMemorization(
+  studentId: string,
+  cb: (rec: MemorizationRecord | null) => void
+) {
+  return onSnapshot(doc(db, 'memorization', studentId), snap => {
+    if (!snap.exists()) { cb(null); return }
+    cb(mapDoc<MemorizationRecord>(snap))
+  })
+}
+
+export async function updateMemorizationSection(
+  studentId: string,
+  section: string,
+  current: number,
+  supervisorId: string
+): Promise<void> {
+  const memRef = doc(db, 'memorization', studentId)
+  const snap = await getDoc(memRef)
+  if (!snap.exists()) return
+
+  const data = snap.data() as Record<string, unknown>
+  const sec = data[section] as { current: number; completed: boolean; bonusAwarded: boolean }
+
+  await updateDoc(memRef, {
+    [`${section}.current`]: current,
+    lastUpdatedBy: supervisorId,
+    lastUpdatedAt: serverTimestamp(),
+  })
+
+  await syncStudentPoints(studentId)
+}
+
+export async function toggleSectionCompleted(
+  studentId: string,
+  section: string,
+  completed: boolean,
+  supervisorId: string
+): Promise<void> {
+  const memRef = doc(db, 'memorization', studentId)
+  const snap = await getDoc(memRef)
+  if (!snap.exists()) return
+
+  const data = snap.data() as Record<string, unknown>
+  const sec = data[section] as { bonusAwarded: boolean }
+  const wasBonus = sec.bonusAwarded
+
+  const updates: Record<string, unknown> = {
+    [`${section}.completed`]: completed,
+    [`${section}.completedAt`]: completed ? serverTimestamp() : null,
+    [`${section}.bonusAwarded`]: completed ? true : false,
+    lastUpdatedBy: supervisorId,
+    lastUpdatedAt: serverTimestamp(),
+  }
+
+  await updateDoc(memRef, updates)
+  await syncStudentPoints(studentId)
+}
+
+async function syncStudentPoints(studentId: string): Promise<void> {
+  const snap = await getDoc(doc(db, 'memorization', studentId))
+  if (!snap.exists()) return
+  const mem = mapDoc<MemorizationRecord>(snap)
+  const total = calcTotalPoints(mem)
+  await updateDoc(doc(db, 'students', studentId), { totalPoints: total })
+}
+
+// ─── Attendance ───────────────────────────────────────────────────────────────
+
+export async function getTodayAttendance(group: 'A' | 'B'): Promise<AttendanceRecord[]> {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+
+  const q = query(
+    collection(db, 'attendance'),
+    where('group', '==', group),
+    where('date', '>=', Timestamp.fromDate(today)),
+    where('date', '<', Timestamp.fromDate(tomorrow))
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map(d => mapDoc<AttendanceRecord>(d))
+}
+
+export async function getStudentAttendance(studentId: string): Promise<AttendanceRecord[]> {
+  const q = query(
+    collection(db, 'attendance'),
+    where('studentId', '==', studentId),
+    orderBy('date', 'desc')
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map(d => mapDoc<AttendanceRecord>(d))
+}
+
+export async function saveAttendance(records: Omit<AttendanceRecord, 'id'>[]): Promise<void> {
+  const batch = writeBatch(db)
+  for (const r of records) {
+    const ref = doc(collection(db, 'attendance'))
+    batch.set(ref, { ...r, date: Timestamp.fromDate(new Date()) })
+  }
+  await batch.commit()
+}
+
+export async function updateAttendanceRecord(id: string, data: Partial<AttendanceRecord>): Promise<void> {
+  await updateDoc(doc(db, 'attendance', id), data)
+}
+
+// ─── Schedule Notes ───────────────────────────────────────────────────────────
+
+export async function getScheduleNotes(group: 'A' | 'B'): Promise<ScheduleNote[]> {
+  const q = query(
+    collection(db, 'schedule_notes'),
+    where('group', '==', group),
+    orderBy('createdAt', 'desc')
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map(d => mapDoc<ScheduleNote>(d))
+}
+
+export async function addScheduleNote(data: Omit<ScheduleNote, 'id' | 'createdAt'>): Promise<void> {
+  await addDoc(collection(db, 'schedule_notes'), { ...data, createdAt: serverTimestamp() })
+}
+
+export async function deleteScheduleNote(id: string): Promise<void> {
+  await deleteDoc(doc(db, 'schedule_notes', id))
+}
+
+// ─── Schedule Config ──────────────────────────────────────────────────────────
+
+export async function getScheduleConfig(group: 'A' | 'B'): Promise<ScheduleConfig> {
+  const snap = await getDoc(doc(db, 'schedule_config', group))
+  if (!snap.exists()) {
+    return { group, sun: 'فقه', mon: 'فقه', tue: 'نحو', wed: 'نحو' }
+  }
+  return snap.data() as ScheduleConfig
+}
+
+export async function saveScheduleConfig(config: ScheduleConfig): Promise<void> {
+  await setDoc(doc(db, 'schedule_config', config.group), config)
+}
+
+// ─── Weekly Awards ────────────────────────────────────────────────────────────
+
+export function subscribeWeeklyAwards(cb: (awards: WeeklyAward[]) => void) {
+  const q = query(collection(db, 'weekly_awards'), orderBy('weekStart', 'desc'))
+  return onSnapshot(q, snap => {
+    cb(snap.docs.map(d => mapDoc<WeeklyAward>(d)))
+  })
+}
+
+export async function setWeeklyAward(data: Omit<WeeklyAward, 'id'>): Promise<void> {
+  const weekKey = data.weekStart.toISOString().split('T')[0]
+  await setDoc(doc(db, 'weekly_awards', weekKey), {
+    ...data,
+    weekStart: Timestamp.fromDate(data.weekStart),
+    weekEnd: Timestamp.fromDate(data.weekEnd),
+  })
+}
+
+// ─── Public Stats ─────────────────────────────────────────────────────────────
+
+export async function getPublicStats() {
+  const [studentsSnap, memSnap] = await Promise.all([
+    getDocs(collection(db, 'students')),
+    getDocs(collection(db, 'memorization')),
+  ])
+
+  const students = studentsSnap.docs.map(d => d.data() as Student)
+  const mems = memSnap.docs.map(d => d.data() as MemorizationRecord)
+
+  let totalPages = 0
+  let totalVerses = 0
+  let totalHadith = 0
+  let totalCompletedMutoon = 0
+  let totalStudents = students.length
+
+  for (const m of mems) {
+    totalPages += (m.juzAmma?.current ?? 0) + (m.juzTabarak?.current ?? 0)
+    totalVerses += (m.jazariyya?.current ?? 0) + (m.rahbiyya?.current ?? 0) + (m.zubd?.current ?? 0)
+    totalHadith += m.fortyHadith?.current ?? 0
+    const completed =
+      [m.juzAmma, m.juzTabarak, m.jazariyya, m.fortyHadith, m.rahbiyya, m.zubd]
+        .filter(s => s?.completed).length
+    totalCompletedMutoon += completed
+  }
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+
+  const todaySnap = await getDocs(query(
+    collection(db, 'attendance'),
+    where('present', '==', true),
+    where('date', '>=', Timestamp.fromDate(today)),
+    where('date', '<', Timestamp.fromDate(tomorrow))
+  ))
+
+  return {
+    totalStudents,
+    totalPages,
+    totalVerses,
+    totalHadith,
+    totalCompletedMutoon,
+    todayStudents: todaySnap.size,
+  }
+}

@@ -1,0 +1,127 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    direction: rtl;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Cairo', sans-serif;
+    background-color: #F5EDD8;
+    color: #3D2B1F;
+    min-height: 100vh;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #ECD9B8;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #C9A84C;
+    border-radius: 3px;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-gold text-brown-dark font-bold py-2.5 px-6 rounded-xl
+           hover:bg-gold-dark hover:text-parchment transition-all duration-200
+           shadow-md hover:shadow-lg active:scale-95 cursor-pointer;
+  }
+
+  .btn-secondary {
+    @apply bg-sand text-brown-dark font-semibold py-2.5 px-6 rounded-xl
+           hover:bg-sand-dark transition-all duration-200
+           border border-brown-xlight active:scale-95 cursor-pointer;
+  }
+
+  .btn-danger {
+    @apply bg-red-600 text-white font-semibold py-2.5 px-6 rounded-xl
+           hover:bg-red-700 transition-all duration-200
+           shadow-md hover:shadow-lg active:scale-95 cursor-pointer;
+  }
+
+  .card {
+    @apply bg-parchment rounded-2xl shadow-md border border-sand-light p-5;
+  }
+
+  .card-sand {
+    @apply bg-sand-light rounded-2xl shadow-md border border-sand p-5;
+  }
+
+  .input-field {
+    @apply w-full bg-parchment border border-sand rounded-xl px-4 py-3
+           text-brown-dark placeholder-brown-xlight
+           focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold
+           transition-all duration-200;
+  }
+
+  .section-title {
+    @apply font-amiri text-2xl font-bold text-brown-dark mb-4;
+  }
+
+  .badge-gold {
+    @apply bg-gold-xlight text-gold-dark text-xs font-bold px-2.5 py-1 rounded-full border border-gold-light;
+  }
+
+  .badge-green {
+    @apply bg-green-50 text-green-700 text-xs font-bold px-2.5 py-1 rounded-full border border-green-200;
+  }
+
+  .badge-red {
+    @apply bg-red-50 text-red-700 text-xs font-bold px-2.5 py-1 rounded-full border border-red-200;
+  }
+
+  .stat-card {
+    @apply card flex flex-col items-center justify-center text-center p-4 gap-1;
+  }
+
+  .nav-link {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-brown font-semibold
+           hover:bg-sand-light hover:text-brown-dark transition-all duration-200 cursor-pointer;
+  }
+
+  .nav-link-active {
+    @apply bg-gold text-brown-dark shadow-md;
+  }
+
+  .table-header {
+    @apply bg-sand text-brown-dark font-bold text-sm py-3 px-4 text-right;
+  }
+
+  .table-cell {
+    @apply py-3 px-4 text-brown text-sm border-b border-sand-light;
+  }
+}
+
+@layer utilities {
+  .font-amiri {
+    font-family: 'Amiri', serif;
+  }
+
+  .text-shadow {
+    text-shadow: 0 1px 3px rgba(61, 43, 31, 0.3);
+  }
+
+  .pattern-bg {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23C9A84C' fill-opacity='0.06'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  .gradient-sand {
+    background: linear-gradient(135deg, #F5EDD8 0%, #ECD9B8 50%, #D4B896 100%);
+  }
+
+  .gradient-gold {
+    background: linear-gradient(135deg, #E8D5A3 0%, #C9A84C 100%);
+  }
+}
