@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Users, BookOpen, Star, Trophy, FileText, Award, Clock } from 'lucide-react'
+import { Users, BookOpen, Star, Trophy, FileText, Award } from 'lucide-react'
 import { getPublicStats, subscribeWeeklyAwards } from '../../firebase/db'
 import type { WeeklyAward } from '../../types'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import Logo from '../../components/common/Logo'
-import { formatDateAr } from '../../utils/dateHelpers'
 
 interface Stats {
   totalStudents: number
@@ -28,9 +27,6 @@ export default function PublicStatsPage() {
     const unsub = subscribeWeeklyAwards(setAwards)
     return () => unsub()
   }, [])
-
-  const currentAward = awards[0]
-  const lastAward = awards[1]
 
   if (loading) return (
     <div className="min-h-screen bg-cream pattern-bg flex items-center justify-center">
@@ -61,8 +57,8 @@ export default function PublicStatsPage() {
             </div>
             <div className="stat-card bg-cream">
               <FileText className="h-6 w-6 text-blue-600" />
-              <p className="text-3xl font-bold text-brown-dark">-</p>
-              <p className="text-xs text-brown-light">صفحات اليوم</p>
+              <p className="text-3xl font-bold text-brown-dark">{stats?.totalPages ?? 0}</p>
+              <p className="text-xs text-brown-light">صفحات القرآن</p>
             </div>
           </div>
         </div>
@@ -97,48 +93,51 @@ export default function PublicStatsPage() {
           </div>
         </div>
 
-        {/* Current week award */}
-        {currentAward && (
-          <div className="card border-2 border-gold-light">
-            <div className="flex items-center gap-2 mb-4">
+        {/* All weekly awards */}
+        {awards.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
               <Trophy className="h-5 w-5 text-gold" />
-              <h2 className="font-bold text-brown-dark">جوائز هذا الأسبوع</h2>
+              <h2 className="font-bold text-brown-dark text-lg">جوائز الأسابيع</h2>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gold-xlight rounded-2xl p-4 text-center border border-gold-light">
-                <Star className="h-6 w-6 text-gold mx-auto mb-1" />
-                <p className="text-xs text-brown-light mb-1">مثالي الأسبوع</p>
-                <p className="font-amiri text-xl font-bold text-brown-dark">{currentAward.idealStudentName}</p>
-              </div>
-              <div className="bg-gold-xlight rounded-2xl p-4 text-center border border-gold-light">
-                <BookOpen className="h-6 w-6 text-gold mx-auto mb-1" />
-                <p className="text-xs text-brown-light mb-1">حافظ الأسبوع</p>
-                <p className="font-amiri text-xl font-bold text-brown-dark">{currentAward.topMemorizerName}</p>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* Last week award */}
-        {lastAward && (
-          <div className="card">
-            <div className="flex items-center gap-2 mb-3">
-              <Clock className="h-5 w-5 text-brown-light" />
-              <h2 className="font-bold text-brown-dark">جوائز الأسبوع الماضي</h2>
-              <span className="text-xs text-brown-light">
-                {lastAward.weekStart instanceof Date ? formatDateAr(lastAward.weekStart) : ''}
-              </span>
-            </div>
-            <div className="flex gap-4 flex-wrap">
-              <div className="flex items-center gap-2">
-                <Star className="h-4 w-4 text-gold" />
-                <span className="text-sm text-brown">مثالي: <strong>{lastAward.idealStudentName}</strong></span>
+            {awards.map((award, index) => (
+              <div
+                key={award.id}
+                className={`card border-2 ${index === 0 ? 'border-gold bg-gold-xlight/40' : 'border-sand-light'}`}
+              >
+                {/* Week label */}
+                <div className="flex items-center gap-2 mb-3">
+                  {index === 0 && <Star className="h-4 w-4 text-gold flex-shrink-0" />}
+                  <h3 className={`font-bold text-lg ${index === 0 ? 'text-gold-dark' : 'text-brown-dark'}`}>
+                    {award.weekLabel || `الأسبوع ${index + 1}`}
+                  </h3>
+                  {index === 0 && (
+                    <span className="mr-auto text-xs bg-gold text-brown-dark px-2 py-0.5 rounded-full font-bold">
+                      الأحدث
+                    </span>
+                  )}
+                </div>
+
+                {/* Winners */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className={`rounded-xl p-3 text-center border ${index === 0 ? 'bg-white/60 border-gold-light' : 'bg-cream border-sand-light'}`}>
+                    <Star className="h-5 w-5 text-gold mx-auto mb-1" />
+                    <p className="text-xs text-brown-light mb-1">مثالي الأسبوع</p>
+                    <p className="font-amiri font-bold text-brown-dark text-base leading-tight">
+                      {award.idealStudentName}
+                    </p>
+                  </div>
+                  <div className={`rounded-xl p-3 text-center border ${index === 0 ? 'bg-white/60 border-gold-light' : 'bg-cream border-sand-light'}`}>
+                    <BookOpen className="h-5 w-5 text-gold mx-auto mb-1" />
+                    <p className="text-xs text-brown-light mb-1">حافظ الأسبوع</p>
+                    <p className="font-amiri font-bold text-brown-dark text-base leading-tight">
+                      {award.topMemorizerName}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-gold" />
-                <span className="text-sm text-brown">حافظ: <strong>{lastAward.topMemorizerName}</strong></span>
-              </div>
-            </div>
+            ))}
           </div>
         )}
 
