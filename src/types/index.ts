@@ -83,6 +83,7 @@ export interface ScheduleConfig {
 
 export interface WeeklyAward {
   id: string
+  weekLabel: string
   weekStart: Date
   weekEnd: Date
   idealStudentId: string
@@ -90,6 +91,7 @@ export interface WeeklyAward {
   topMemorizerId: string
   topMemorizerName: string
   setBy: string
+  createdAt?: Date
 }
 
 export interface AuthUser {

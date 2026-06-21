@@ -339,6 +339,26 @@ export function subscribeWeeklyAwards(cb: (awards: WeeklyAward[]) => void) {
   })
 }
 
+export async function addWeeklyAward(data: Omit<WeeklyAward, 'id'>): Promise<void> {
+  await addDoc(collection(db, 'weekly_awards'), {
+    ...data,
+    weekStart: Timestamp.fromDate(data.weekStart),
+    weekEnd: Timestamp.fromDate(data.weekEnd),
+    createdAt: serverTimestamp(),
+  })
+}
+
+export async function updateWeeklyAward(id: string, data: Partial<Omit<WeeklyAward, 'id'>>): Promise<void> {
+  const updates: Record<string, unknown> = { ...data }
+  if (data.weekStart) updates.weekStart = Timestamp.fromDate(data.weekStart)
+  if (data.weekEnd) updates.weekEnd = Timestamp.fromDate(data.weekEnd)
+  await updateDoc(doc(db, 'weekly_awards', id), updates)
+}
+
+export async function deleteWeeklyAward(id: string): Promise<void> {
+  await deleteDoc(doc(db, 'weekly_awards', id))
+}
+
 export async function setWeeklyAward(data: Omit<WeeklyAward, 'id'>): Promise<void> {
   const weekKey = data.weekStart.toISOString().split('T')[0]
   await setDoc(doc(db, 'weekly_awards', weekKey), {

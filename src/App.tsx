@@ -74,6 +74,7 @@ function AppRoutes() {
         <Route path="memorization/:studentId" element={<MemorizationPage />} />
         <Route path="teachers" element={<TeachersPage />} />
         <Route path="supervisors" element={<SupervisorsPage />} />
+        <Route path="attendance" element={<AttendancePage />} />
         <Route path="schedule" element={<SchedulePage />} />
         <Route path="awards" element={<AwardsPage />} />
         <Route path="rankings" element={<RankingsPage />} />
