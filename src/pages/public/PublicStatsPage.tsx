@@ -21,7 +21,10 @@ export default function PublicStatsPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getPublicStats().then(s => { setStats(s); setLoading(false) })
+    getPublicStats()
+      .then(s => setStats(s))
+      .catch(e => console.error('خطأ في الإحصائيات:', e))
+      .finally(() => setLoading(false))
     const unsub = subscribeWeeklyAwards(setAwards)
     return () => unsub()
   }, [])

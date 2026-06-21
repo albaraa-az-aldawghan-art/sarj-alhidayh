@@ -263,12 +263,12 @@ export async function getTodayAttendance(group: 'A' | 'B'): Promise<AttendanceRe
 
   const q = query(
     collection(db, 'attendance'),
-    where('group', '==', group),
     where('date', '>=', Timestamp.fromDate(today)),
     where('date', '<', Timestamp.fromDate(tomorrow))
   )
   const snap = await getDocs(q)
-  return snap.docs.map(d => mapDoc<AttendanceRecord>(d))
+  const all = snap.docs.map(d => mapDoc<AttendanceRecord>(d))
+  return all.filter(r => r.group === group)
 }
 
 export async function getStudentAttendance(studentId: string): Promise<AttendanceRecord[]> {
@@ -382,10 +382,10 @@ export async function getPublicStats() {
 
   const todaySnap = await getDocs(query(
     collection(db, 'attendance'),
-    where('present', '==', true),
     where('date', '>=', Timestamp.fromDate(today)),
     where('date', '<', Timestamp.fromDate(tomorrow))
   ))
+  const todayPresent = todaySnap.docs.filter(d => (d.data() as AttendanceRecord).present === true).length
 
   return {
     totalStudents,
@@ -393,6 +393,6 @@ export async function getPublicStats() {
     totalVerses,
     totalHadith,
     totalCompletedMutoon,
-    todayStudents: todaySnap.size,
+    todayStudents: todayPresent,
   }
 }
