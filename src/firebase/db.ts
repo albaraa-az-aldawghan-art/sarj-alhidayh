@@ -393,12 +393,17 @@ export async function getPublicStats() {
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
 
-  const todaySnap = await getDocs(query(
-    collection(db, 'attendance'),
-    where('date', '>=', Timestamp.fromDate(today)),
-    where('date', '<', Timestamp.fromDate(tomorrow))
-  ))
+  const [todaySnap, allAttendanceSnap] = await Promise.all([
+    getDocs(query(
+      collection(db, 'attendance'),
+      where('date', '>=', Timestamp.fromDate(today)),
+      where('date', '<', Timestamp.fromDate(tomorrow))
+    )),
+    getDocs(collection(db, 'attendance')),
+  ])
+
   const todayPresent = todaySnap.docs.filter(d => (d.data() as AttendanceRecord).present === true).length
+  const totalAttendance = allAttendanceSnap.docs.filter(d => (d.data() as AttendanceRecord).present === true).length
 
   return {
     totalStudents,
@@ -407,5 +412,6 @@ export async function getPublicStats() {
     totalHadith,
     totalCompletedMutoon,
     todayStudents: todayPresent,
+    totalAttendance,
   }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Users, BookOpen, Star, Trophy, FileText, Award } from 'lucide-react'
+import { Users, BookOpen, Star, Trophy, FileText, Award, ClipboardCheck } from 'lucide-react'
 import { getPublicStats, subscribeWeeklyAwards } from '../../firebase/db'
 import type { WeeklyAward } from '../../types'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
@@ -12,6 +12,7 @@ interface Stats {
   totalHadith: number
   totalCompletedMutoon: number
   todayStudents: number
+  totalAttendance: number
 }
 
 export default function PublicStatsPage() {
@@ -43,22 +44,22 @@ export default function PublicStatsPage() {
       </div>
 
       <div className="max-w-lg mx-auto p-5 space-y-5">
-        {/* Today stats */}
+        {/* Attendance stats */}
         <div className="card">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-2 h-6 bg-gold rounded-full" />
-            <h2 className="font-bold text-brown-dark text-lg">إحصائيات اليوم</h2>
+            <h2 className="font-bold text-brown-dark text-lg">إحصائيات الحضور</h2>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="stat-card bg-cream">
+            <div className="stat-card bg-green-50 border border-green-200">
               <Users className="h-6 w-6 text-green-600" />
-              <p className="text-3xl font-bold text-brown-dark">{stats?.todayStudents ?? 0}</p>
-              <p className="text-xs text-brown-light">طلاب اليوم</p>
+              <p className="text-3xl font-bold text-green-700">{stats?.todayStudents ?? 0}</p>
+              <p className="text-xs text-green-600">حضور اليوم</p>
             </div>
-            <div className="stat-card bg-cream">
-              <FileText className="h-6 w-6 text-blue-600" />
-              <p className="text-3xl font-bold text-brown-dark">{stats?.totalPages ?? 0}</p>
-              <p className="text-xs text-brown-light">صفحات القرآن</p>
+            <div className="stat-card bg-cream border border-gold-light">
+              <ClipboardCheck className="h-6 w-6 text-gold" />
+              <p className="text-3xl font-bold text-brown-dark">{stats?.totalAttendance ?? 0}</p>
+              <p className="text-xs text-brown-light">إجمالي الحضور الكلي</p>
             </div>
           </div>
         </div>
