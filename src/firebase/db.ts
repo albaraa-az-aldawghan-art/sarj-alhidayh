@@ -272,13 +272,14 @@ export async function getTodayAttendance(group: 'A' | 'B'): Promise<AttendanceRe
 }
 
 export async function getStudentAttendance(studentId: string): Promise<AttendanceRecord[]> {
-  const q = query(
-    collection(db, 'attendance'),
-    where('studentId', '==', studentId),
-    orderBy('date', 'desc')
-  )
+  const q = query(collection(db, 'attendance'), where('studentId', '==', studentId))
   const snap = await getDocs(q)
-  return snap.docs.map(d => mapDoc<AttendanceRecord>(d))
+  const records = snap.docs.map(d => mapDoc<AttendanceRecord>(d))
+  return records.sort((a, b) => {
+    const ta = a.date instanceof Date ? a.date.getTime() : 0
+    const tb = b.date instanceof Date ? b.date.getTime() : 0
+    return tb - ta
+  })
 }
 
 export async function saveAttendance(records: Omit<AttendanceRecord, 'id'>[]): Promise<void> {
@@ -297,13 +298,14 @@ export async function updateAttendanceRecord(id: string, data: Partial<Attendanc
 // ─── Schedule Notes ───────────────────────────────────────────────────────────
 
 export async function getScheduleNotes(group: 'A' | 'B'): Promise<ScheduleNote[]> {
-  const q = query(
-    collection(db, 'schedule_notes'),
-    where('group', '==', group),
-    orderBy('createdAt', 'desc')
-  )
+  const q = query(collection(db, 'schedule_notes'), where('group', '==', group))
   const snap = await getDocs(q)
-  return snap.docs.map(d => mapDoc<ScheduleNote>(d))
+  const notes = snap.docs.map(d => mapDoc<ScheduleNote>(d))
+  return notes.sort((a, b) => {
+    const ta = a.createdAt instanceof Date ? a.createdAt.getTime() : 0
+    const tb = b.createdAt instanceof Date ? b.createdAt.getTime() : 0
+    return tb - ta
+  })
 }
 
 export async function addScheduleNote(data: Omit<ScheduleNote, 'id' | 'createdAt'>): Promise<void> {

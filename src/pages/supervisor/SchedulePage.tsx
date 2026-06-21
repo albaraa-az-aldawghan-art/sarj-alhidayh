@@ -24,11 +24,16 @@ export default function SchedulePage() {
   const [saving, setSaving] = useState(false)
 
   const load = async () => {
-    const [n, c] = await Promise.all([getScheduleNotes(group), getScheduleConfig(group)])
-    setNotes(n)
-    setConfig(c)
-    setConfigForm(c)
-    setLoading(false)
+    try {
+      const [n, c] = await Promise.all([getScheduleNotes(group), getScheduleConfig(group)])
+      setNotes(n)
+      setConfig(c)
+      setConfigForm(c)
+    } catch (e) {
+      console.error('خطأ في تحميل الجدول:', e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
