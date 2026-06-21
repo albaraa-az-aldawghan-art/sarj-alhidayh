@@ -48,24 +48,26 @@ export async function initializeFirstSupervisor() {
 
 // ─── Auth helpers ─────────────────────────────────────────────────────────────
 
+function matchLogin(data: Record<string, unknown>, name: string, code: string): boolean {
+  return String(data.code ?? '').trim() === code.trim() &&
+         String(data.name ?? '').trim() === name.trim()
+}
+
 export async function loginSupervisor(name: string, code: string): Promise<Supervisor | null> {
-  const snap = await getDocs(query(collection(db, 'supervisors'), where('code', '==', code.trim())))
-  if (snap.empty) return null
-  const match = snap.docs.find(d => d.data().name?.trim() === name.trim())
+  const snap = await getDocs(collection(db, 'supervisors'))
+  const match = snap.docs.find(d => matchLogin(d.data() as Record<string, unknown>, name, code))
   return match ? mapDoc<Supervisor>(match) : null
 }
 
 export async function loginTeacher(name: string, code: string): Promise<Teacher | null> {
-  const snap = await getDocs(query(collection(db, 'teachers'), where('code', '==', code.trim())))
-  if (snap.empty) return null
-  const match = snap.docs.find(d => d.data().name?.trim() === name.trim())
+  const snap = await getDocs(collection(db, 'teachers'))
+  const match = snap.docs.find(d => matchLogin(d.data() as Record<string, unknown>, name, code))
   return match ? mapDoc<Teacher>(match) : null
 }
 
 export async function loginStudent(name: string, code: string): Promise<Student | null> {
-  const snap = await getDocs(query(collection(db, 'students'), where('code', '==', code.trim())))
-  if (snap.empty) return null
-  const match = snap.docs.find(d => d.data().name?.trim() === name.trim())
+  const snap = await getDocs(collection(db, 'students'))
+  const match = snap.docs.find(d => matchLogin(d.data() as Record<string, unknown>, name, code))
   return match ? mapDoc<Student>(match) : null
 }
 
