@@ -4,9 +4,9 @@ import StarRating from '../../components/common/StarRating'
 import { useAuth } from '../../contexts/AuthContext'
 import {
   getStudents, subscribeMemorization, subscribeWeeklyAwards,
-  getStudentAttendance, getScheduleNotes, getScheduleConfig, subscribeChallenges,
+  getStudentAttendance, getScheduleNotes, getScheduleConfig, subscribeChallenges, getTeachers,
 } from '../../firebase/db'
-import type { MemorizationRecord, WeeklyAward, AttendanceRecord, ScheduleNote, ScheduleConfig, Challenge, ChallengeParticipant } from '../../types'
+import type { MemorizationRecord, WeeklyAward, AttendanceRecord, ScheduleNote, ScheduleConfig, Challenge, ChallengeParticipant, Teacher } from '../../types'
 import { MEMORIZATION_LIMITS, MEMORIZATION_LABELS, MEMORIZATION_UNITS, DAY_LABELS } from '../../types'
 import { calcSectionBasePoints } from '../../utils/pointsCalculator'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
@@ -28,6 +28,7 @@ export default function StudentDashboard() {
   const [notes, setNotes] = useState<ScheduleNote[]>([])
   const [config, setConfig] = useState<ScheduleConfig>({ group: 'A', sun: 'فقه', mon: 'فقه', tue: 'نحو', wed: 'نحو' })
   const [challenges, setChallenges] = useState<Challenge[]>([])
+  const [myTeachers, setMyTeachers] = useState<Teacher[]>([])
   const [globalRank, setGlobalRank] = useState<number>(0)
   const [totalStudents, setTotalStudents] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -37,12 +38,15 @@ export default function StudentDashboard() {
     const group = user.group || 'A'
 
     const loadData = async () => {
-      const [allStudents, att, n, c] = await Promise.all([
+      const [allStudents, att, n, c, allTeachers] = await Promise.all([
         getStudents(),
         getStudentAttendance(user.id),
         getScheduleNotes(group),
         getScheduleConfig(group),
+        getTeachers(),
       ])
+      const circleKey = group === 'A' ? 'أ' : 'ب'
+      setMyTeachers(allTeachers.filter(t => t.circle === circleKey))
 
       const rank = allStudents.findIndex(s => s.id === user.id) + 1
       setGlobalRank(rank)
@@ -280,7 +284,14 @@ export default function StudentDashboard() {
 
       {/* Schedule */}
       <div className="card">
-        <h2 className="font-bold text-brown-dark mb-4">الجدول الأسبوعي</h2>
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <h2 className="font-bold text-brown-dark">الجدول الأسبوعي</h2>
+          {myTeachers.length > 0 && (
+            <span className="text-xs bg-gold-xlight border border-gold-light text-brown-dark font-semibold px-3 py-1 rounded-full">
+              المعلم: {myTeachers.map(t => t.name).join('، ')}
+            </span>
+          )}
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {DAYS.map(day => {
             const dayNotes = notes.filter(n => n.day === day)
