@@ -3,6 +3,7 @@ import { Users, BookOpen, Star, Trophy, FileText, Award, ClipboardCheck, Medal }
 import { getPublicStats, subscribeWeeklyAwards, subscribeChallenges } from '../../firebase/db'
 import type { WeeklyAward, Challenge, ChallengeParticipant } from '../../types'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
+import StarRating from '../../components/common/StarRating'
 import Logo from '../../components/common/Logo'
 
 interface Completion {
@@ -27,14 +28,9 @@ function getStars(p: ChallengeParticipant) {
 
 function ChallengeStars({ stars }: { stars: number }) {
   return (
-    <span className="font-bold text-gold">
-      {[0, 1].map(i => {
-        const r = stars - i
-        if (r >= 1) return <span key={i}>★</span>
-        if (r >= 0.5) return <span key={i}>½</span>
-        return <span key={i} className="text-sand-dark">☆</span>
-      })}
-      <span className="text-xs text-brown-light mr-1">({stars}/2)</span>
+    <span className="inline-flex items-center gap-1">
+      <StarRating stars={stars} size={20} />
+      <span className="text-xs text-brown-light">({stars}/2)</span>
     </span>
   )
 }

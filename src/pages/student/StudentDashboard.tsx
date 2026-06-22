@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Trophy, Star, BookOpen, CheckCircle, XCircle, Book, Shirt, RefreshCw, Medal } from 'lucide-react'
+import StarRating from '../../components/common/StarRating'
 import { useAuth } from '../../contexts/AuthContext'
 import {
   getStudents, subscribeMemorization, subscribeWeeklyAwards,
@@ -163,7 +164,7 @@ export default function StudentDashboard() {
                           ${me[k] ? 'bg-gold text-brown-dark border-gold-dark' : 'bg-sand-light text-brown-xlight border-sand'}`}
                       >
                         <span>{DAY_SHORT[i]}</span>
-                        <span>{me[k] ? '½⭐' : '○'}</span>
+                        {me[k] ? <StarRating stars={0.5} max={1} size={14} /> : <span className="text-brown-xlight text-xs">○</span>}
                       </div>
                     ))}
                   </div>
@@ -171,8 +172,8 @@ export default function StudentDashboard() {
                   {/* Stars total + group standings */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-2xl font-bold text-gold-dark">{myStars}</span>
-                      <span className="text-sm text-brown-light">/ 2 نجمة</span>
+                      <StarRating stars={myStars} size={22} />
+                      <span className="text-sm text-brown-light font-bold">{myStars}/2</span>
                     </div>
                     <div className="text-left">
                       {g.students
@@ -181,7 +182,7 @@ export default function StudentDashboard() {
                         .map(s => (
                           <div key={s.studentId} className={`text-xs flex items-center gap-1.5 ${s.studentId === user?.id ? 'font-bold text-brown-dark' : 'text-brown-light'}`}>
                             <span>{s.studentName}</span>
-                            <span className="text-gold">{'★'.repeat(Math.floor(getChallengeStars(s)))}{getChallengeStars(s) % 1 ? '½' : ''}</span>
+                            <StarRating stars={getChallengeStars(s)} size={14} />
                           </div>
                         ))}
                     </div>

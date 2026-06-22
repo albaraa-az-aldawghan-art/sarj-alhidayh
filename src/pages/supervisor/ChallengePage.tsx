@@ -8,6 +8,7 @@ import type { Student, Challenge, ChallengeGroup, ChallengeParticipant } from '.
 import { useAuth } from '../../contexts/AuthContext'
 import Modal from '../../components/common/Modal'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
+import StarRating from '../../components/common/StarRating'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -29,14 +30,9 @@ function getWinners(group: ChallengeGroup): ChallengeParticipant[] {
 
 function StarsDisplay({ stars }: { stars: number }) {
   return (
-    <span className="flex items-center gap-0.5 font-bold text-sm">
-      {[0, 1].map(i => {
-        const rem = stars - i
-        if (rem >= 1) return <span key={i} className="text-gold text-base">★</span>
-        if (rem >= 0.5) return <span key={i} className="text-gold text-base">½</span>
-        return <span key={i} className="text-sand-dark text-base">☆</span>
-      })}
-      <span className="text-xs text-brown-light mr-0.5">{stars}</span>
+    <span className="flex items-center gap-1">
+      <StarRating stars={stars} size={18} />
+      <span className="text-xs text-brown-light">{stars}/2</span>
     </span>
   )
 }
