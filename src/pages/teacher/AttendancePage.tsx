@@ -38,7 +38,7 @@ export default function AttendancePage() {
   const todayDate = new Date(); todayDate.setHours(0, 0, 0, 0)
 
   const [dateVal, setDateVal] = useState(toInputValue(todayDate))
-  const [group, setGroup] = useState<'A' | 'B'>('A')
+  const [group] = useState<'A' | 'B'>((user?.group as 'A' | 'B') ?? 'A')
   const [students, setStudents] = useState<Student[]>([])
   const [attendance, setAttendance] = useState<AttendanceState[]>([])
   const [loading, setLoading] = useState(false)
@@ -159,21 +159,9 @@ export default function AttendancePage() {
         )}
       </div>
 
-      {/* Step 2: Group selector */}
-      <div className="card">
-        <p className="text-sm font-bold text-brown-dark mb-3">اختر المجموعة</p>
-        <div className="flex gap-3">
-          {(['A', 'B'] as const).map(g => (
-            <button
-              key={g}
-              onClick={() => setGroup(g)}
-              className={`flex-1 py-3 rounded-xl font-bold text-lg transition-colors
-                ${group === g ? 'bg-gold text-brown-dark shadow-md' : 'bg-parchment text-brown border border-sand hover:bg-sand-light'}`}
-            >
-              مجموعة {g === 'A' ? 'أ' : 'ب'}
-            </button>
-          ))}
-        </div>
+      {/* Group indicator */}
+      <div className="bg-gold-xlight border border-gold-light rounded-xl px-4 py-2 text-center text-sm font-bold text-brown-dark">
+        مجموعة {group === 'A' ? 'أ' : 'ب'}
       </div>
 
       {/* Step 3: Attendance */}
