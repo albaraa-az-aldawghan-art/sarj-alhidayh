@@ -4,7 +4,7 @@ import StarRating from '../../components/common/StarRating'
 import { useAuth } from '../../contexts/AuthContext'
 import {
   getStudents, subscribeMemorization, subscribeWeeklyAwards,
-  getStudentAttendance, getScheduleNotes, getScheduleConfig, subscribeChallenges, getTeachers,
+  getStudentAttendance, getScheduleNotes, getScheduleConfig, subscribeChallenges, getTeachers, getSupervisors,
 } from '../../firebase/db'
 import type { MemorizationRecord, WeeklyAward, AttendanceRecord, ScheduleNote, ScheduleConfig, Challenge, ChallengeParticipant, Teacher } from '../../types'
 import { MEMORIZATION_LIMITS, MEMORIZATION_LABELS, MEMORIZATION_UNITS, DAY_LABELS } from '../../types'
@@ -29,6 +29,7 @@ export default function StudentDashboard() {
   const [config, setConfig] = useState<ScheduleConfig>({ group: 'A', sun: 'فقه', mon: 'فقه', tue: 'نحو', wed: 'نحو' })
   const [challenges, setChallenges] = useState<Challenge[]>([])
   const [myTeachers, setMyTeachers] = useState<Teacher[]>([])
+  const [supervisorName, setSupervisorName] = useState<string>('')
   const [globalRank, setGlobalRank] = useState<number>(0)
   const [totalStudents, setTotalStudents] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -38,15 +39,18 @@ export default function StudentDashboard() {
     const group = user.group || 'A'
 
     const loadData = async () => {
-      const [allStudents, att, n, c, allTeachers] = await Promise.all([
+      const [allStudents, att, n, c, allTeachers, supervisors] = await Promise.all([
         getStudents(),
         getStudentAttendance(user.id),
         getScheduleNotes(group),
         getScheduleConfig(group),
         getTeachers(),
+        getSupervisors(),
       ])
       const circleKey = group === 'A' ? 'أ' : 'ب'
       setMyTeachers(allTeachers.filter(t => t.circle === circleKey))
+      const sup = supervisors.find(s => s.id === user.supervisorId)
+      if (sup) setSupervisorName(sup.name)
 
       const rank = allStudents.findIndex(s => s.id === user.id) + 1
       setGlobalRank(rank)
@@ -250,9 +254,16 @@ export default function StudentDashboard() {
       {/* Memorization progress - Book visual */}
       {memorization && (
         <div className="card">
-          <h2 className="font-bold text-brown-dark mb-5 flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-gold" /> تقدمي في الحفظ
-          </h2>
+          <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+            <h2 className="font-bold text-brown-dark flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-gold" /> تقدمي في الحفظ
+            </h2>
+            {supervisorName && (
+              <span className="text-xs bg-gold-xlight border border-gold-light text-brown-dark font-semibold px-3 py-1 rounded-full">
+                المشرف: {supervisorName}
+              </span>
+            )}
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {sections.map(key => {
               const sec = memorization[key]
