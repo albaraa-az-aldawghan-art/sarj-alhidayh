@@ -12,7 +12,7 @@ const DAYS = ['sun', 'mon', 'tue', 'wed'] as const
 
 export default function ScheduleNotesPage() {
   const { user } = useAuth()
-  const [group, setGroup] = useState<'A' | 'B'>('A')
+  const [group] = useState<'A' | 'B'>((user?.group as 'A' | 'B') ?? 'A')
   const [notes, setNotes] = useState<ScheduleNote[]>([])
   const [config, setConfig] = useState<ScheduleConfig>({ group: 'A', sun: 'فقه', mon: 'فقه', tue: 'نحو', wed: 'نحو' })
   const [loading, setLoading] = useState(true)
@@ -71,16 +71,8 @@ export default function ScheduleNotesPage() {
         </button>
       </div>
 
-      <div className="flex gap-3">
-        {(['A', 'B'] as const).map(g => (
-          <button
-            key={g}
-            onClick={() => setGroup(g)}
-            className={`flex-1 py-2.5 rounded-xl font-bold transition-colors ${group === g ? 'bg-gold text-brown-dark shadow-md' : 'bg-parchment text-brown border border-sand hover:bg-sand-light'}`}
-          >
-            مجموعة {g === 'A' ? 'أ' : 'ب'}
-          </button>
-        ))}
+      <div className="bg-gold-xlight border border-gold-light rounded-xl px-4 py-2 text-center text-sm font-bold text-brown-dark">
+        مجموعة {group === 'A' ? 'أ' : 'ب'}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
