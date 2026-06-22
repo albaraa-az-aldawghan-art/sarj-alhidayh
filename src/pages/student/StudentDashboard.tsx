@@ -171,10 +171,10 @@ export default function StudentDashboard() {
 
                   {/* Stars total + group standings */}
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <StarRating stars={myStars} size={22} />
-                      <span className="text-sm text-brown-light font-bold">{myStars}/2</span>
-                    </div>
+                    <span className="inline-flex items-center gap-1">
+                      <StarRating stars={myStars} size={20} />
+                      <span className="text-xs text-brown-light">({myStars}/2)</span>
+                    </span>
                     <div className="text-left">
                       {g.students
                         .slice()
@@ -182,7 +182,10 @@ export default function StudentDashboard() {
                         .map(s => (
                           <div key={s.studentId} className={`text-xs flex items-center gap-1.5 ${s.studentId === user?.id ? 'font-bold text-brown-dark' : 'text-brown-light'}`}>
                             <span>{s.studentName}</span>
-                            <StarRating stars={getChallengeStars(s)} size={14} />
+                            <span className="inline-flex items-center gap-0.5">
+                              <StarRating stars={getChallengeStars(s)} size={16} />
+                              <span className="text-xs text-brown-light">({getChallengeStars(s)}/2)</span>
+                            </span>
                           </div>
                         ))}
                     </div>

@@ -30,9 +30,9 @@ function getWinners(group: ChallengeGroup): ChallengeParticipant[] {
 
 function StarsDisplay({ stars }: { stars: number }) {
   return (
-    <span className="flex items-center gap-1">
-      <StarRating stars={stars} size={18} />
-      <span className="text-xs text-brown-light">{stars}/2</span>
+    <span className="inline-flex items-center gap-1">
+      <StarRating stars={stars} size={20} />
+      <span className="text-xs text-brown-light">({stars}/2)</span>
     </span>
   )
 }
