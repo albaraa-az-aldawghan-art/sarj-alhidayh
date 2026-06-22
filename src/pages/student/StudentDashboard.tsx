@@ -164,7 +164,7 @@ export default function StudentDashboard() {
                           ${me[k] ? 'bg-gold text-brown-dark border-gold-dark' : 'bg-sand-light text-brown-xlight border-sand'}`}
                       >
                         <span>{DAY_SHORT[i]}</span>
-                        {me[k] ? <StarRating stars={0.5} max={1} size={14} /> : <span className="text-brown-xlight text-xs">○</span>}
+                        {me[k] ? <StarRating stars={0.5} max={1} size={14} flipHalf /> : <span className="text-brown-xlight text-xs">○</span>}
                       </div>
                     ))}
                   </div>

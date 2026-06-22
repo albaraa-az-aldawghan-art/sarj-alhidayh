@@ -2,16 +2,18 @@ interface Props {
   stars: number   // 0 | 0.5 | 1 | 1.5 | 2
   max?: number    // default 2
   size?: number   // px, default 20
+  flipHalf?: boolean  // flip which side is filled (for gold backgrounds)
 }
 
-function Star({ fill, size }: { fill: 'full' | 'half' | 'empty'; size: number }) {
+function Star({ fill, size, flipHalf }: { fill: 'full' | 'half' | 'empty'; size: number; flipHalf?: boolean }) {
   const id = `half-${Math.random().toString(36).slice(2)}`
+  const clipX = flipHalf ? "0" : "12"
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       {fill === 'half' && (
         <defs>
           <clipPath id={id}>
-            <rect x="12" y="0" width="12" height="24" />
+            <rect x={clipX} y="0" width="12" height="24" />
           </clipPath>
         </defs>
       )}
@@ -38,7 +40,7 @@ function Star({ fill, size }: { fill: 'full' | 'half' | 'empty'; size: number })
   )
 }
 
-export default function StarRating({ stars, max = 2, size = 20 }: Props) {
+export default function StarRating({ stars, max = 2, size = 20, flipHalf }: Props) {
   const items = Array.from({ length: max }, (_, i) => {
     const rem = stars - i
     if (rem >= 1) return 'full' as const
@@ -49,7 +51,7 @@ export default function StarRating({ stars, max = 2, size = 20 }: Props) {
   return (
     <span className="inline-flex items-center gap-0.5">
       {items.map((fill, i) => (
-        <Star key={i} fill={fill} size={size} />
+        <Star key={i} fill={fill} size={size} flipHalf={flipHalf} />
       ))}
     </span>
   )
