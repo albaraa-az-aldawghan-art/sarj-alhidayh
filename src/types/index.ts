@@ -94,6 +94,30 @@ export interface WeeklyAward {
   createdAt?: Date
 }
 
+export interface ChallengeParticipant {
+  studentId: string
+  studentName: string
+  sun: boolean
+  mon: boolean
+  tue: boolean
+  wed: boolean
+}
+
+export interface ChallengeGroup {
+  id: string
+  name: string
+  students: ChallengeParticipant[]
+}
+
+export interface Challenge {
+  id: string
+  name: string
+  supervisorId: string
+  supervisorName: string
+  groups: ChallengeGroup[]
+  createdAt: Date
+}
+
 export interface AuthUser {
   id: string
   role: UserRole

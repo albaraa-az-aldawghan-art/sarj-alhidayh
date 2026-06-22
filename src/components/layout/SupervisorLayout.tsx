@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, BookOpen, GraduationCap, ClipboardList,
-  Calendar, Trophy, BarChart3, QrCode, Shield,
+  Calendar, Trophy, BarChart3, QrCode, Shield, Medal,
   Menu, X, LogOut, ChevronLeft,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -17,6 +17,7 @@ const navItems = [
   { to: '/supervisor/supervisors', label: 'المشرفون', icon: Shield },
   { to: '/supervisor/schedule', label: 'الجدول', icon: Calendar },
   { to: '/supervisor/awards', label: 'مثالي الأسبوع', icon: Trophy },
+  { to: '/supervisor/challenges', label: 'تحديات الحفظ', icon: Medal },
   { to: '/supervisor/rankings', label: 'الترتيب العام', icon: BarChart3 },
   { to: '/supervisor/qrcode', label: 'الباركود', icon: QrCode },
 ]

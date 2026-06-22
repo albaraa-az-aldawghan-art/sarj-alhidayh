@@ -6,7 +6,7 @@ import {
 import { db } from './config'
 import type {
   Supervisor, Teacher, Student, MemorizationRecord, MemorizationSection,
-  AttendanceRecord, ScheduleNote, ScheduleConfig, WeeklyAward,
+  AttendanceRecord, ScheduleNote, ScheduleConfig, WeeklyAward, Challenge,
 } from '../types'
 import { calcTotalPoints } from '../utils/pointsCalculator'
 import { getWeekStart, getWeekEnd } from '../utils/dateHelpers'
@@ -429,4 +429,23 @@ export async function getPublicStats() {
     totalAttendance,
     completions,
   }
+}
+
+// ─── Challenges ───────────────────────────────────────────────────────────────
+
+export function subscribeChallenges(cb: (challenges: Challenge[]) => void) {
+  const q = query(collection(db, 'challenges'), orderBy('createdAt', 'desc'))
+  return onSnapshot(q, snap => cb(snap.docs.map(d => mapDoc<Challenge>(d))))
+}
+
+export async function addChallenge(data: Omit<Challenge, 'id'>): Promise<void> {
+  await addDoc(collection(db, 'challenges'), { ...data, createdAt: serverTimestamp() })
+}
+
+export async function updateChallenge(id: string, data: Partial<Omit<Challenge, 'id'>>): Promise<void> {
+  await updateDoc(doc(db, 'challenges', id), data)
+}
+
+export async function deleteChallenge(id: string): Promise<void> {
+  await deleteDoc(doc(db, 'challenges', id))
 }
