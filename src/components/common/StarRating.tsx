@@ -11,7 +11,7 @@ function Star({ fill, size }: { fill: 'full' | 'half' | 'empty'; size: number })
       {fill === 'half' && (
         <defs>
           <clipPath id={id}>
-            <rect x="0" y="0" width="12" height="24" />
+            <rect x="12" y="0" width="12" height="24" />
           </clipPath>
         </defs>
       )}
