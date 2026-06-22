@@ -1,17 +1,23 @@
 import { useEffect, useState } from 'react'
-import { Trophy, Star, BookOpen, CheckCircle, XCircle, Book, Shirt, RefreshCw } from 'lucide-react'
+import { Trophy, Star, BookOpen, CheckCircle, XCircle, Book, Shirt, RefreshCw, Medal } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import {
   getStudents, subscribeMemorization, subscribeWeeklyAwards,
-  getStudentAttendance, getScheduleNotes, getScheduleConfig,
+  getStudentAttendance, getScheduleNotes, getScheduleConfig, subscribeChallenges,
 } from '../../firebase/db'
-import type { MemorizationRecord, WeeklyAward, AttendanceRecord, ScheduleNote, ScheduleConfig } from '../../types'
+import type { MemorizationRecord, WeeklyAward, AttendanceRecord, ScheduleNote, ScheduleConfig, Challenge, ChallengeParticipant } from '../../types'
 import { MEMORIZATION_LIMITS, MEMORIZATION_LABELS, MEMORIZATION_UNITS, DAY_LABELS } from '../../types'
 import { calcSectionBasePoints } from '../../utils/pointsCalculator'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import { BookProgress } from '../../components/common/BookProgress'
 
 const DAYS = ['sun', 'mon', 'tue', 'wed'] as const
+const DAY_SHORT = ['ح', 'ن', 'ث', 'ر']
+const DAY_FULL = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء']
+
+function getChallengeStars(p: ChallengeParticipant): number {
+  return [p.sun, p.mon, p.tue, p.wed].filter(Boolean).length * 0.5
+}
 
 export default function StudentDashboard() {
   const { user } = useAuth()
@@ -20,6 +26,7 @@ export default function StudentDashboard() {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([])
   const [notes, setNotes] = useState<ScheduleNote[]>([])
   const [config, setConfig] = useState<ScheduleConfig>({ group: 'A', sun: 'فقه', mon: 'فقه', tue: 'نحو', wed: 'نحو' })
+  const [challenges, setChallenges] = useState<Challenge[]>([])
   const [globalRank, setGlobalRank] = useState<number>(0)
   const [totalStudents, setTotalStudents] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -49,8 +56,9 @@ export default function StudentDashboard() {
 
     const unsubMem = subscribeMemorization(user.id, setMemorization)
     const unsubAwards = subscribeWeeklyAwards(setAwards)
+    const unsubChallenges = subscribeChallenges(setChallenges)
 
-    return () => { unsubMem(); unsubAwards() }
+    return () => { unsubMem(); unsubAwards(); unsubChallenges() }
   }, [user])
 
   if (loading) return <div className="flex justify-center p-20"><LoadingSpinner size="lg" text="جاري التحميل..." /></div>
@@ -110,6 +118,80 @@ export default function StudentDashboard() {
           )}
         </div>
       )}
+
+      {/* Memorization Challenges */}
+      {(() => {
+        const myParts = challenges.flatMap(ch =>
+          ch.groups.flatMap(g => {
+            const me = g.students.find(s => s.studentId === user?.id)
+            if (!me) return []
+            const myStars = getChallengeStars(me)
+            const rank = g.students.filter(s => getChallengeStars(s) > myStars).length + 1
+            const maxStars = Math.max(...g.students.map(getChallengeStars))
+            const isFirst = myStars > 0 && myStars === maxStars
+            return [{ ch, g, me, myStars, rank, isFirst }]
+          })
+        )
+        if (myParts.length === 0) return null
+        return (
+          <div className="card border-2 border-sand-light">
+            <h2 className="font-bold text-brown-dark mb-4 flex items-center gap-2">
+              <Medal className="h-5 w-5 text-gold" /> تحدياتي
+            </h2>
+            <div className="space-y-4">
+              {myParts.map(({ ch, g, me, myStars, rank, isFirst }) => (
+                <div key={`${ch.id}_${g.id}`} className={`rounded-2xl p-4 border-2 ${isFirst ? 'border-gold bg-gold-xlight/40' : 'border-sand-light bg-cream'}`}>
+                  {/* Challenge + group name */}
+                  <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                    <div>
+                      <p className="font-bold text-brown-dark">{ch.name}</p>
+                      <p className="text-xs text-brown-light">{g.name}</p>
+                    </div>
+                    {isFirst
+                      ? <span className="flex items-center gap-1 bg-gold text-brown-dark text-xs font-bold px-3 py-1 rounded-full"><Trophy className="h-3.5 w-3.5" /> المركز الأول</span>
+                      : <span className="text-xs bg-parchment text-brown border border-sand px-3 py-1 rounded-full font-semibold">المركز #{rank}</span>
+                    }
+                  </div>
+
+                  {/* Day dots */}
+                  <div className="flex items-center gap-2 mb-3">
+                    {DAYS.map((k, i) => (
+                      <div
+                        key={k}
+                        title={DAY_FULL[i]}
+                        className={`flex-1 py-2 rounded-xl flex flex-col items-center gap-0.5 text-xs font-bold border
+                          ${me[k] ? 'bg-gold text-brown-dark border-gold-dark' : 'bg-sand-light text-brown-xlight border-sand'}`}
+                      >
+                        <span>{DAY_SHORT[i]}</span>
+                        <span>{me[k] ? '½⭐' : '○'}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Stars total + group standings */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl font-bold text-gold-dark">{myStars}</span>
+                      <span className="text-sm text-brown-light">/ 2 نجمة</span>
+                    </div>
+                    <div className="text-left">
+                      {g.students
+                        .slice()
+                        .sort((a, b) => getChallengeStars(b) - getChallengeStars(a))
+                        .map(s => (
+                          <div key={s.studentId} className={`text-xs flex items-center gap-1.5 ${s.studentId === user?.id ? 'font-bold text-brown-dark' : 'text-brown-light'}`}>
+                            <span>{s.studentName}</span>
+                            <span className="text-gold">{'★'.repeat(Math.floor(getChallengeStars(s)))}{getChallengeStars(s) % 1 ? '½' : ''}</span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Attendance summary */}
       <div className="card">
