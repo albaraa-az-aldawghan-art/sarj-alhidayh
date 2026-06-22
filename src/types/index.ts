@@ -139,7 +139,7 @@ export const MEMORIZATION_LIMITS = {
 export const MEMORIZATION_LABELS: Record<keyof typeof MEMORIZATION_LIMITS, string> = {
   juzAmma: 'جزء عم',
   juzTabarak: 'جزء تبارك',
-  jazariyya: 'متن الجزرية',
+  jazariyya: 'متن الجمزورية',
   fortyHadith: 'الأربعين النووية',
   rahbiyya: 'متن الرحبية',
   zubd: 'متن الزبد',

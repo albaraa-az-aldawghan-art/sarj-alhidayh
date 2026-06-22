@@ -366,7 +366,7 @@ export async function setWeeklyAward(data: Omit<WeeklyAward, 'id'>): Promise<voi
 const BOOK_LABELS: Record<string, string> = {
   juzAmma: 'جزء عم',
   juzTabarak: 'جزء تبارك',
-  jazariyya: 'متن الجزرية',
+  jazariyya: 'متن الجمزورية',
   fortyHadith: 'الأربعين النووية',
   rahbiyya: 'متن الرحبية',
   zubd: 'متن الزبد',
