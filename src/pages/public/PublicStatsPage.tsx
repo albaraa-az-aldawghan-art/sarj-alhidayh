@@ -191,7 +191,7 @@ export default function PublicStatsPage() {
           </div>
         )}
 
-        {/* Challenge winners */}
+        {/* Challenge winners — first place only */}
         {challenges.length > 0 && (
           <div className="space-y-3">
             <div className="flex items-center gap-2 px-1">
@@ -200,52 +200,42 @@ export default function PublicStatsPage() {
             </div>
 
             {challenges.map(ch => {
-              const hasAnyWinner = ch.groups.some(g => {
+              const groupWinners = ch.groups.map(g => {
                 const max = Math.max(...g.students.map(getStars))
-                return max > 0
+                const winners = max > 0 ? g.students.filter(s => getStars(s) === max) : []
+                return { group: g, winners, maxStars: max }
               })
+              const hasAnyWinner = groupWinners.some(gw => gw.winners.length > 0)
+
               return (
-                <div key={ch.id} className="card border-2 border-sand-light">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Trophy className="h-4 w-4 text-gold" />
-                    <h3 className="font-bold text-brown-dark">{ch.name}</h3>
+                <div key={ch.id} className="card border-2 border-gold-light">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Trophy className="h-5 w-5 text-gold" />
+                    <h3 className="font-bold text-brown-dark text-lg">{ch.name}</h3>
                   </div>
 
                   {!hasAnyWinner ? (
-                    <p className="text-sm text-brown-light text-center py-2">التحدي جارٍ، لا يوجد فائز حتى الآن</p>
+                    <p className="text-sm text-brown-light text-center py-3">التحدي جارٍ، لا يوجد فائز حتى الآن</p>
                   ) : (
                     <div className="space-y-3">
-                      {ch.groups.map(group => {
-                        const maxStars = Math.max(...group.students.map(getStars))
-                        const winners = maxStars > 0 ? group.students.filter(s => getStars(s) === maxStars) : []
-                        const sorted = [...group.students].sort((a, b) => getStars(b) - getStars(a))
-                        return (
-                          <div key={group.id} className="bg-cream rounded-xl p-3 border border-sand-light">
-                            <p className="text-xs font-bold text-brown-light mb-2">{group.name}</p>
-                            <div className="space-y-1.5">
-                              {sorted.map(p => {
-                                const stars = getStars(p)
-                                const isWinner = winners.some(w => w.studentId === p.studentId)
-                                return (
-                                  <div
-                                    key={p.studentId}
-                                    className={`flex items-center justify-between px-3 py-2 rounded-lg
-                                      ${isWinner ? 'bg-gold-xlight border border-gold-light' : 'bg-parchment'}`}
-                                  >
-                                    <div className="flex items-center gap-1.5">
-                                      {isWinner && <Trophy className="h-3.5 w-3.5 text-gold" />}
-                                      <span className={`font-bold text-sm ${isWinner ? 'text-brown-dark' : 'text-brown'}`}>
-                                        {p.studentName}
-                                      </span>
-                                    </div>
-                                    <ChallengeStars stars={stars} />
-                                  </div>
-                                )
-                              })}
+                      {groupWinners.map(({ group, winners, maxStars }) => (
+                        <div key={group.id} className="bg-gold-xlight rounded-2xl p-4 border border-gold-light">
+                          <p className="text-xs font-bold text-brown-light mb-3 text-center">{group.name}</p>
+                          {winners.length === 0 ? (
+                            <p className="text-xs text-brown-xlight text-center">لا يوجد فائز بعد</p>
+                          ) : (
+                            <div className={`grid gap-3 ${winners.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                              {winners.map(w => (
+                                <div key={w.studentId} className="bg-white/70 rounded-xl p-3 text-center border border-gold-light">
+                                  <Trophy className="h-5 w-5 text-gold mx-auto mb-1.5" />
+                                  <p className="font-amiri font-bold text-brown-dark text-base">{w.studentName}</p>
+                                  <ChallengeStars stars={maxStars} />
+                                </div>
+                              ))}
                             </div>
-                          </div>
-                        )
-                      })}
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
