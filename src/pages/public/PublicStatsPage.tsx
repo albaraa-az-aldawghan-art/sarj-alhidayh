@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Users, BookOpen, Star, Trophy, FileText, Award, ClipboardCheck, Medal } from 'lucide-react'
-import { getPublicStats, subscribeWeeklyAwards, subscribeChallenges } from '../../firebase/db'
-import type { WeeklyAward, Challenge, ChallengeParticipant } from '../../types'
+import { getPublicStats, subscribeWeeklyAwards, subscribeChallenges, getStudents } from '../../firebase/db'
+import type { WeeklyAward, Challenge, ChallengeParticipant, Student } from '../../types'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import StarRating from '../../components/common/StarRating'
 import Logo from '../../components/common/Logo'
@@ -39,11 +39,12 @@ export default function PublicStatsPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [awards, setAwards] = useState<WeeklyAward[]>([])
   const [challenges, setChallenges] = useState<Challenge[]>([])
+  const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getPublicStats()
-      .then(s => setStats(s))
+    Promise.all([getPublicStats(), getStudents()])
+      .then(([s, sts]) => { setStats(s); setStudents(sts) })
       .catch(e => console.error('خطأ في الإحصائيات:', e))
       .finally(() => setLoading(false))
     const u1 = subscribeWeeklyAwards(setAwards)
@@ -237,6 +238,39 @@ export default function PublicStatsPage() {
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {/* General Rankings */}
+        {students.length > 0 && (
+          <div className="card">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-2 h-6 bg-gold rounded-full" />
+              <h2 className="font-bold text-brown-dark text-lg">الترتيب العام</h2>
+            </div>
+            <div className="space-y-2">
+              {students.map((s, i) => {
+                const rank = i + 1
+                const rankBadge = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null
+                return (
+                  <div
+                    key={s.id}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${rank <= 3 ? 'bg-gold-xlight border-gold-light' : 'bg-cream border-sand-light'}`}
+                  >
+                    <div className="w-8 text-center flex-shrink-0">
+                      {rankBadge
+                        ? <span className="text-xl">{rankBadge}</span>
+                        : <span className="w-7 h-7 rounded-full bg-sand-light text-brown font-bold text-sm flex items-center justify-center">{rank}</span>
+                      }
+                    </div>
+                    <span className={`flex-1 font-bold ${rank <= 3 ? 'text-brown-dark' : 'text-brown'}`}>{s.name}</span>
+                    <span className="text-xs font-semibold text-brown-light bg-parchment px-2 py-1 rounded-full border border-sand">
+                      {s.totalPoints} نقطة
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
 
