@@ -109,12 +109,24 @@ export interface ChallengeGroup {
   students: ChallengeParticipant[]
 }
 
+export interface ChallengeWeekWinner {
+  studentId: string
+  studentName: string
+  score: number
+}
+
+export interface ChallengeWeek {
+  weekLabel: string
+  groupWinners: { groupId: string; groupName: string; winners: ChallengeWeekWinner[] }[]
+}
+
 export interface Challenge {
   id: string
   name: string
   supervisorId: string
   supervisorName: string
   groups: ChallengeGroup[]
+  weekHistory: ChallengeWeek[]
   createdAt: Date
 }
 

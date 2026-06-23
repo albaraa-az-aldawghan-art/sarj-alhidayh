@@ -449,3 +449,39 @@ export async function updateChallenge(id: string, data: Partial<Omit<Challenge, 
 export async function deleteChallenge(id: string): Promise<void> {
   await deleteDoc(doc(db, 'challenges', id))
 }
+
+function computeChallengeScore(p: { sun: number; mon: number; tue: number; wed: number }): number {
+  return (['sun', 'mon', 'tue', 'wed'] as const).reduce((sum, k) => {
+    const v = Number(p[k]) || 0
+    return v > 0 ? sum + v + 0.5 : sum
+  }, 0)
+}
+
+export async function resetChallengeWeek(id: string, weekLabel: string): Promise<void> {
+  const ref = doc(db, 'challenges', id)
+  const snap = await getDoc(ref)
+  const data = snap.data() as Record<string, unknown>
+  const groups = (data.groups ?? []) as Challenge['groups']
+  const existing = (data.weekHistory ?? []) as Challenge['weekHistory']
+
+  const groupWinners = groups.map(g => {
+    const scored = g.students.map(s => ({
+      studentId: s.studentId,
+      studentName: s.studentName,
+      score: computeChallengeScore(s),
+    }))
+    const max = scored.length ? Math.max(...scored.map(s => s.score)) : 0
+    const winners = max > 0 ? scored.filter(s => s.score === max) : []
+    return { groupId: g.id, groupName: g.name, winners }
+  })
+
+  const resetGroups = groups.map(g => ({
+    ...g,
+    students: g.students.map(s => ({ ...s, sun: 0, mon: 0, tue: 0, wed: 0 })),
+  }))
+
+  await updateDoc(ref, {
+    groups: resetGroups,
+    weekHistory: [...existing, { weekLabel, groupWinners }],
+  })
+}
