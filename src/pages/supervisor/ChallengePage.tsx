@@ -112,12 +112,6 @@ export default function ChallengePage() {
   // ── Create ──────────────────────────────────────────────────────────────────
 
   const openCreate = () => {
-    // Reuse existing challenge that has empty groups (after a week ended)
-    const existingEmpty = challenges.find(ch => ch.groups.length === 0)
-    if (existingEmpty) {
-      openAddGroup(existingEmpty)
-      return
-    }
     setChallengeName('')
     setDraftGroups([{ name: 'المجموعة الأولى', studentIds: [] }])
     setShowCreate(true)
@@ -145,25 +139,31 @@ export default function ChallengePage() {
     if (draftGroups.some(g => g.studentIds.length < 2)) return toast.error('كل مجموعة تحتاج طالبين على الأقل')
     setSaving(true)
     try {
-      const now = new Date()
-      const autoName = `تحديات الحفظ — ${now.toLocaleDateString('ar-SA', { year: 'numeric', month: 'long' })}`
       const groups: ChallengeGroup[] = draftGroups.map((g, idx) => ({
-        id: `g${idx + 1}`,
+        id: `g${idx + 1}_${Date.now()}`,
         name: g.name,
         students: g.studentIds.map(sid => {
           const s = allStudents.find(st => st.id === sid)!
           return { studentId: sid, studentName: s.name, sun: 0, mon: 0, tue: 0, wed: 0 }
         }),
       }))
-      await addChallenge({
-        name: autoName,
-        supervisorId: user!.id,
-        supervisorName: user!.name,
-        groups,
-        weekHistory: [],
-        createdAt: new Date(),
-      })
-      toast.success('تم إنشاء الأسبوع الجديد')
+      // Reuse existing challenge with empty groups instead of creating a new doc
+      const existingEmpty = challenges.find(ch => ch.groups.length === 0)
+      if (existingEmpty) {
+        await updateChallenge(existingEmpty.id, { groups })
+      } else {
+        const now = new Date()
+        const autoName = `تحديات الحفظ — ${now.toLocaleDateString('ar-SA', { year: 'numeric', month: 'long' })}`
+        await addChallenge({
+          name: autoName,
+          supervisorId: user!.id,
+          supervisorName: user!.name,
+          groups,
+          weekHistory: [],
+          createdAt: new Date(),
+        })
+      }
+      toast.success('تم بدء الأسبوع الجديد')
       setShowCreate(false)
     } catch { toast.error('حدث خطأ') }
     finally { setSaving(false) }
