@@ -4,7 +4,7 @@ import toast from 'react-hot-toast'
 import {
   getStudents, subscribeChallenges, addChallenge, updateChallenge, deleteChallenge, resetChallengeWeek,
 } from '../../firebase/db'
-import type { Student, Challenge, ChallengeGroup, ChallengeParticipant, ChallengeWeek } from '../../types'
+import type { Student, Challenge, ChallengeGroup, ChallengeParticipant, ChallengeWeek, ChallengeWeekParticipant } from '../../types'
 import { useAuth } from '../../contexts/AuthContext'
 import Modal from '../../components/common/Modal'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
@@ -27,6 +27,13 @@ function getWinners(group: ChallengeGroup): ChallengeParticipant[] {
   const max = Math.max(...group.students.map(getChallengeScore))
   if (max === 0) return []
   return group.students.filter(s => getChallengeScore(s) === max)
+}
+
+function getWeekWinners(participants: ChallengeWeekParticipant[]): ChallengeWeekParticipant[] {
+  if (!participants.length) return []
+  const max = Math.max(...participants.map(p => p.score))
+  if (max === 0) return []
+  return participants.filter(p => p.score === max)
 }
 
 function ScoreDisplay({ score }: { score: number }) {
@@ -384,43 +391,41 @@ export default function ChallengePage() {
                     </button>
                     {historyExpanded && (
                       <div className="mt-3 space-y-3">
-                        {weekHistory.map((week, weekIdx) => (
-                          <div key={weekIdx} className="bg-cream rounded-xl p-3 border border-sand-light">
-                            <div className="flex items-center justify-between mb-2">
-                              <p className="font-bold text-brown-dark text-sm">{week.weekLabel}</p>
-                              <div className="flex items-center gap-1">
-                                <button
-                                  onClick={() => openEditWeek(ch, weekIdx)}
-                                  className="p-1.5 rounded-lg text-brown-light hover:bg-sand-light hover:text-brown transition-colors"
-                                  title="تعديل"
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteWeek(ch, weekIdx)}
-                                  className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors"
-                                  title="حذف"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
+                        {weekHistory.map((week, weekIdx) => {
+                          const gd = week.groupData ?? []
+                          return (
+                            <div key={weekIdx} className="bg-cream rounded-xl p-3 border border-sand-light">
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="font-bold text-brown-dark text-sm">{week.weekLabel}</p>
+                                <div className="flex items-center gap-1">
+                                  <button onClick={() => openEditWeek(ch, weekIdx)} className="p-1.5 rounded-lg text-brown-light hover:bg-sand-light hover:text-brown transition-colors" title="تعديل">
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button onClick={() => handleDeleteWeek(ch, weekIdx)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors" title="حذف">
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                {gd.map(g => {
+                                  const winners = getWeekWinners(g.participants)
+                                  return (
+                                    <div key={g.groupId} className="text-xs">
+                                      <span className="text-brown-light">{g.groupName}: </span>
+                                      {winners.length === 0
+                                        ? <span className="text-brown-xlight">لا يوجد فائز</span>
+                                        : winners.map(w => (
+                                          <span key={w.studentId} className="inline-flex items-center gap-1 bg-gold-xlight text-gold-dark font-semibold px-2 py-0.5 rounded-full border border-gold-light mr-1">
+                                            <Trophy className="h-2.5 w-2.5" /> {w.studentName} ({w.score} نقطة)
+                                          </span>
+                                        ))}
+                                    </div>
+                                  )
+                                })}
                               </div>
                             </div>
-                            <div className="space-y-1">
-                              {week.groupWinners.map(gw => (
-                                <div key={gw.groupId} className="flex items-center gap-2 text-xs flex-wrap">
-                                  <span className="text-brown-light">{gw.groupName}:</span>
-                                  {gw.winners.length === 0
-                                    ? <span className="text-brown-xlight">لا يوجد فائز</span>
-                                    : gw.winners.map(w => (
-                                      <span key={w.studentId} className="flex items-center gap-1 bg-gold-xlight text-gold-dark font-semibold px-2 py-0.5 rounded-full border border-gold-light">
-                                        <Trophy className="h-2.5 w-2.5" /> {w.studentName} ({w.score} نقطة)
-                                      </span>
-                                    ))}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     )}
                   </div>
@@ -535,37 +540,54 @@ export default function ChallengePage() {
                 className="input-field"
               />
             </div>
-            {editWeek.groupWinners.map((gw, gi) => (
-              <div key={gw.groupId} className="bg-cream rounded-2xl p-3 border border-sand-light">
-                <p className="font-bold text-brown-dark text-sm mb-3">{gw.groupName}</p>
-                {gw.winners.length === 0
-                  ? <p className="text-xs text-brown-xlight text-center py-2">لا يوجد فائز مسجّل</p>
-                  : gw.winners.map((w, wi) => (
-                    <div key={w.studentId} className="flex items-center gap-3 mb-2">
-                      <span className="flex-1 font-bold text-brown-dark text-sm">{w.studentName}</span>
-                      <input
-                        type="number" min={0} step={0.5}
-                        value={w.score}
-                        onChange={e => {
-                          const score = Number(e.target.value) || 0
-                          setEditWeek(prev => {
-                            if (!prev) return prev
-                            const gws = prev.groupWinners.map((g2, gIdx) => {
-                              if (gIdx !== gi) return g2
-                              const ws = g2.winners.map((w2, wIdx) => wIdx === wi ? { ...w2, score } : w2)
-                              return { ...g2, winners: ws }
-                            })
-                            return { ...prev, groupWinners: gws }
-                          })
-                        }}
-                        className="input-field w-24 text-center py-1.5 text-sm"
-                      />
-                      <span className="text-xs text-brown-light w-10">نقطة</span>
-                    </div>
-                  ))
-                }
-              </div>
-            ))}
+            {(editWeek.groupData ?? []).map((gd, gi) => {
+              const winners = getWeekWinners(gd.participants)
+              return (
+                <div key={gd.groupId} className="bg-cream rounded-2xl p-3 border border-sand-light">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="font-bold text-brown-dark text-sm">{gd.groupName}</p>
+                    {winners.length > 0 && (
+                      <span className="text-xs text-gold-dark font-bold flex items-center gap-1">
+                        <Trophy className="h-3 w-3" /> {winners.map(w => w.studentName).join('، ')}
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {gd.participants.map((p, pi) => {
+                      const isWinner = winners.some(w => w.studentId === p.studentId)
+                      return (
+                        <div key={p.studentId} className={`flex items-center gap-3 p-2 rounded-xl ${isWinner ? 'bg-gold-xlight border border-gold-light' : ''}`}>
+                          {isWinner && <Trophy className="h-3.5 w-3.5 text-gold flex-shrink-0" />}
+                          <span className={`flex-1 text-sm ${isWinner ? 'font-bold text-brown-dark' : 'font-semibold text-brown'}`}>{p.studentName}</span>
+                          <input
+                            type="number" min={0} step={0.5}
+                            value={p.score === 0 ? '' : p.score}
+                            placeholder="0"
+                            onChange={e => {
+                              const score = Math.max(0, Number(e.target.value) || 0)
+                              setEditWeek(prev => {
+                                if (!prev) return prev
+                                const groupData = prev.groupData.map((g2, gIdx) => {
+                                  if (gIdx !== gi) return g2
+                                  const participants = g2.participants.map((p2, pIdx) =>
+                                    pIdx === pi ? { ...p2, score } : p2
+                                  )
+                                  return { ...g2, participants }
+                                })
+                                return { ...prev, groupData }
+                              })
+                            }}
+                            className="input-field w-20 text-center py-1 text-sm"
+                          />
+                          <span className="text-xs text-brown-light w-10">نقطة</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+            <p className="text-xs text-brown-light text-center">الفائز يُحدَّد تلقائياً بأعلى نقطة</p>
             <div className="flex gap-3">
               <button onClick={handleSaveEditWeek} disabled={saving} className="btn-primary flex-1">
                 {saving ? 'جاري الحفظ...' : 'حفظ التعديلات'}

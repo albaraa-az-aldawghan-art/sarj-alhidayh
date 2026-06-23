@@ -109,7 +109,7 @@ export interface ChallengeGroup {
   students: ChallengeParticipant[]
 }
 
-export interface ChallengeWeekWinner {
+export interface ChallengeWeekParticipant {
   studentId: string
   studentName: string
   score: number
@@ -117,7 +117,7 @@ export interface ChallengeWeekWinner {
 
 export interface ChallengeWeek {
   weekLabel: string
-  groupWinners: { groupId: string; groupName: string; winners: ChallengeWeekWinner[] }[]
+  groupData: { groupId: string; groupName: string; participants: ChallengeWeekParticipant[] }[]
 }
 
 export interface Challenge {

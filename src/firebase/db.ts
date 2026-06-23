@@ -464,16 +464,15 @@ export async function resetChallengeWeek(id: string, weekLabel: string): Promise
   const groups = (data.groups ?? []) as Challenge['groups']
   const existing = (data.weekHistory ?? []) as Challenge['weekHistory']
 
-  const groupWinners = groups.map(g => {
-    const scored = g.students.map(s => ({
+  const groupData = groups.map(g => ({
+    groupId: g.id,
+    groupName: g.name,
+    participants: g.students.map(s => ({
       studentId: s.studentId,
       studentName: s.studentName,
       score: computeChallengeScore(s),
-    }))
-    const max = scored.length ? Math.max(...scored.map(s => s.score)) : 0
-    const winners = max > 0 ? scored.filter(s => s.score === max) : []
-    return { groupId: g.id, groupName: g.name, winners }
-  })
+    })),
+  }))
 
   const resetGroups = groups.map(g => ({
     ...g,
@@ -482,6 +481,6 @@ export async function resetChallengeWeek(id: string, weekLabel: string): Promise
 
   await updateDoc(ref, {
     groups: resetGroups,
-    weekHistory: [...existing, { weekLabel, groupWinners }],
+    weekHistory: [...existing, { weekLabel, groupData }],
   })
 }
