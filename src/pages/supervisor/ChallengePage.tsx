@@ -112,6 +112,12 @@ export default function ChallengePage() {
   // ── Create ──────────────────────────────────────────────────────────────────
 
   const openCreate = () => {
+    // Reuse existing challenge that has empty groups (after a week ended)
+    const existingEmpty = challenges.find(ch => ch.groups.length === 0)
+    if (existingEmpty) {
+      openAddGroup(existingEmpty)
+      return
+    }
     setChallengeName('')
     setDraftGroups([{ name: 'المجموعة الأولى', studentIds: [] }])
     setShowCreate(true)
@@ -357,7 +363,7 @@ export default function ChallengePage() {
                       <Trophy className="h-5 w-5 text-gold" />
                     </div>
                     <div className="min-w-0">
-                      <h2 className="font-bold text-brown-dark text-lg truncate">{ch.name}</h2>
+                      <h2 className="font-bold text-brown-dark text-lg truncate">تحديات الحفظ</h2>
                       <p className="text-xs text-brown-light">
                         {ch.groups.length > 0
                           ? `${ch.groups.length} مجموعات • الأسبوع الحالي`
@@ -380,12 +386,14 @@ export default function ChallengePage() {
                         <RotateCcw className="h-4 w-4" /> إنهاء الأسبوع
                       </button>
                     )}
-                    <button
-                      onClick={() => setExpandedId(expanded ? null : ch.id)}
-                      className="p-2 rounded-xl hover:bg-sand-light transition-colors text-brown border border-sand"
-                    >
-                      {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </button>
+                    {ch.groups.length > 0 && (
+                      <button
+                        onClick={() => setExpandedId(expanded ? null : ch.id)}
+                        className="p-2 rounded-xl hover:bg-sand-light transition-colors text-brown border border-sand"
+                      >
+                        {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      </button>
+                    )}
                     <button onClick={() => handleDelete(ch.id)} className="p-2 rounded-xl text-red-400 hover:bg-red-50 transition-colors">
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -393,7 +401,7 @@ export default function ChallengePage() {
                 </div>
 
                 {/* Quick summary */}
-                {!expanded && (
+                {!expanded && ch.groups.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {ch.groups.map(g => {
                       const ws = getWinners(g)
@@ -475,18 +483,25 @@ export default function ChallengePage() {
                   </div>
                 )}
 
-                {/* Week history */}
+                {/* Week history — always visible when no active groups, collapsible otherwise */}
                 {weekHistory.length > 0 && (
                   <div className="mt-3 border-t border-sand-light pt-3">
-                    <button
-                      onClick={() => setExpandedHistory(historyExpanded ? null : ch.id)}
-                      className="flex items-center gap-2 text-sm text-brown-light hover:text-brown font-semibold transition-colors"
-                    >
-                      <Clock className="h-4 w-4" />
-                      سجل الأسابيع ({weekHistory.length})
-                      {historyExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                    </button>
-                    {historyExpanded && (
+                    {ch.groups.length > 0 ? (
+                      <button
+                        onClick={() => setExpandedHistory(historyExpanded ? null : ch.id)}
+                        className="flex items-center gap-2 text-sm text-brown-light hover:text-brown font-semibold transition-colors"
+                      >
+                        <Clock className="h-4 w-4" />
+                        سجل الأسابيع ({weekHistory.length})
+                        {historyExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2 text-sm text-brown-light font-semibold mb-3">
+                        <Clock className="h-4 w-4" />
+                        سجل الأسابيع ({weekHistory.length})
+                      </div>
+                    )}
+                    {(ch.groups.length === 0 || historyExpanded) && (
                       <div className="mt-3 space-y-3">
                         {weekHistory.map((week, weekIdx) => {
                           const gd = week.groupData ?? []
