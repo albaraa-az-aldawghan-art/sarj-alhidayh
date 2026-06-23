@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowRight, CheckCircle, Circle, Plus, Minus } from 'lucide-react'
+import { ArrowRight, CheckCircle, Circle, Plus, Minus, Sun } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { getStudents, subscribeMemorization, updateMemorizationSection, toggleSectionCompleted } from '../../firebase/db'
+import { getStudents, subscribeMemorization, updateMemorizationSection, toggleSectionCompleted, updateStudentDailyPoints } from '../../firebase/db'
 import type { Student, MemorizationRecord } from '../../types'
 import { MEMORIZATION_LIMITS, MEMORIZATION_LABELS, MEMORIZATION_UNITS } from '../../types'
 import { calcSectionBasePoints, getProgressPercent } from '../../utils/pointsCalculator'
@@ -22,6 +22,10 @@ export default function MemorizationPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
   const [inputValues, setInputValues] = useState<Record<string, string>>({})
+  const [dailyInput, setDailyInput] = useState(0)
+  const [savingDaily, setSavingDaily] = useState(false)
+
+  const today = new Date().toISOString().split('T')[0]
 
   useEffect(() => {
     getStudents().then(s => {
@@ -92,6 +96,27 @@ export default function MemorizationPage() {
 
   const selectedStudent = students.find(s => s.id === selectedId)
 
+  // Load daily points when student changes — reset to 0 if date is not today
+  useEffect(() => {
+    if (!selectedStudent) return
+    const pts = selectedStudent.dailyPointsDate === today ? (selectedStudent.dailyPoints ?? 0) : 0
+    setDailyInput(pts)
+  }, [selectedId, students])
+
+  const handleSaveDaily = async () => {
+    if (!selectedId) return
+    setSavingDaily(true)
+    try {
+      await updateStudentDailyPoints(selectedId, dailyInput)
+      setStudents(prev => prev.map(s => s.id === selectedId
+        ? { ...s, dailyPoints: dailyInput, dailyPointsDate: today }
+        : s
+      ))
+      toast.success('تم حفظ نقاط اليوم')
+    } catch { toast.error('حدث خطأ') }
+    finally { setSavingDaily(false) }
+  }
+
   if (loading) return <div className="flex justify-center p-20"><LoadingSpinner size="lg" text="جاري التحميل..." /></div>
 
   const sections = Object.keys(MEMORIZATION_LIMITS) as SectionKey[]
@@ -130,6 +155,49 @@ export default function MemorizationPage() {
           </div>
         )}
       </div>
+
+      {/* Daily points */}
+      {selectedStudent && (
+        <div className="card border-2 border-gold-light bg-gold-xlight/30">
+          <div className="flex items-center gap-2 mb-3">
+            <Sun className="h-5 w-5 text-gold" />
+            <h2 className="font-bold text-brown-dark">نقاط اليوم</h2>
+            <span className="mr-auto text-xs text-brown-xlight">
+              {new Date().toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setDailyInput(v => Math.max(0, v - 1))}
+              className="p-2.5 rounded-xl bg-white border border-sand hover:bg-sand-light text-brown transition-colors"
+            >
+              <Minus className="h-4 w-4" />
+            </button>
+            <input
+              type="number"
+              min={0}
+              value={dailyInput === 0 ? '' : dailyInput}
+              placeholder="0"
+              onChange={e => setDailyInput(Math.max(0, Number(e.target.value) || 0))}
+              className="input-field text-center font-bold text-2xl w-28 flex-shrink-0"
+            />
+            <button
+              onClick={() => setDailyInput(v => v + 1)}
+              className="p-2.5 rounded-xl bg-white border border-sand hover:bg-sand-light text-brown transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+            <button
+              onClick={handleSaveDaily}
+              disabled={savingDaily}
+              className="btn-primary flex-1 text-sm"
+            >
+              {savingDaily ? 'جاري الحفظ...' : 'حفظ نقاط اليوم'}
+            </button>
+          </div>
+          <p className="text-xs text-brown-xlight mt-2 text-center">تُصفَّر تلقائياً في اليوم التالي</p>
+        </div>
+      )}
 
       {/* Visual book progress overview */}
       {memorization && (

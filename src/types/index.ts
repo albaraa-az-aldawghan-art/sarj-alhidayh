@@ -23,6 +23,8 @@ export interface Student {
   group: 'A' | 'B'
   supervisorId: string
   totalPoints: number
+  dailyPoints?: number
+  dailyPointsDate?: string
   createdAt: Date
 }
 

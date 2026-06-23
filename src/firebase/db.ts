@@ -144,6 +144,11 @@ export async function updateStudent(id: string, data: Partial<Student>): Promise
   await updateDoc(doc(db, 'students', id), data)
 }
 
+export async function updateStudentDailyPoints(id: string, points: number): Promise<void> {
+  const today = new Date().toISOString().split('T')[0]
+  await updateDoc(doc(db, 'students', id), { dailyPoints: points, dailyPointsDate: today })
+}
+
 export async function deleteStudent(id: string): Promise<void> {
   const batch = writeBatch(db)
   batch.delete(doc(db, 'students', id))
