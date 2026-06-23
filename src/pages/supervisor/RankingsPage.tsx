@@ -56,8 +56,8 @@ export default function RankingsPage() {
             return (
               <div key={s.id} className="bg-gold-xlight rounded-xl p-3 text-center border border-gold-light">
                 <p className="font-bold text-brown-dark text-sm">{s.name}</p>
-                <p className="text-2xl font-bold text-gold-dark mt-1">#{globalRank}</p>
-                <p className="text-xs text-brown-light">{s.totalPoints} نقطة</p>
+                <div className="flex justify-center mt-1">{rankIcon(globalRank)}</div>
+                <p className="text-xs text-brown-light mt-1">{s.totalPoints} نقطة</p>
               </div>
             )
           })}

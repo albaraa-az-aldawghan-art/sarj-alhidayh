@@ -89,7 +89,7 @@ export default function StudentDashboard() {
             <p className="text-xs text-brown-light">نقاطك</p>
           </div>
           <div className="bg-parchment/70 rounded-xl p-3 text-center">
-            <p className="text-2xl font-bold text-brown-dark">#{globalRank}</p>
+            <div className="flex justify-center text-2xl">{globalRank === 1 ? '🥇' : globalRank === 2 ? '🥈' : globalRank === 3 ? '🥉' : <span className="font-bold text-brown-dark">{globalRank}</span>}</div>
             <p className="text-xs text-brown-light">مركزك</p>
           </div>
           <div className="bg-parchment/70 rounded-xl p-3 text-center">
@@ -158,7 +158,7 @@ export default function StudentDashboard() {
                     </div>
                     {isFirst
                       ? <span className="flex items-center gap-1 bg-gold text-brown-dark text-xs font-bold px-3 py-1 rounded-full"><Trophy className="h-3.5 w-3.5" /> المركز الأول</span>
-                      : <span className="text-xs bg-parchment text-brown border border-sand px-3 py-1 rounded-full font-semibold">المركز #{rank}</span>
+                      : <span className="text-xs bg-parchment text-brown border border-sand px-3 py-1 rounded-full font-semibold flex items-center gap-1">المركز {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`}</span>
                     }
                   </div>
 
