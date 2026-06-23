@@ -241,11 +241,28 @@ export async function toggleSectionCompleted(
 }
 
 async function syncStudentPoints(studentId: string): Promise<void> {
-  const snap = await getDoc(doc(db, 'memorization', studentId))
-  if (!snap.exists()) return
-  const mem = mapDoc<MemorizationRecord>(snap)
-  const total = calcTotalPoints(mem)
-  await updateDoc(doc(db, 'students', studentId), { totalPoints: total })
+  const [memSnap, stuSnap] = await Promise.all([
+    getDoc(doc(db, 'memorization', studentId)),
+    getDoc(doc(db, 'students', studentId)),
+  ])
+  if (!memSnap.exists()) return
+  const mem = mapDoc<MemorizationRecord>(memSnap)
+  const newTotal = calcTotalPoints(mem)
+
+  const today = new Date().toISOString().split('T')[0]
+  const stuData = stuSnap.exists() ? (stuSnap.data() as Record<string, unknown>) : {}
+  const oldTotal = (stuData.totalPoints as number) ?? 0
+  const delta = newTotal - oldTotal
+
+  const existingDate = stuData.dailyPointsDate as string | undefined
+  const existingDaily = (stuData.dailyPoints as number) ?? 0
+  const newDaily = existingDate === today ? existingDaily + delta : Math.max(0, delta)
+
+  await updateDoc(doc(db, 'students', studentId), {
+    totalPoints: newTotal,
+    dailyPoints: newDaily,
+    dailyPointsDate: today,
+  })
 }
 
 // ─── Attendance ───────────────────────────────────────────────────────────────

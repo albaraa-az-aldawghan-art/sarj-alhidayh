@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowRight, CheckCircle, Circle, Plus, Minus, Sun } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { getStudents, subscribeMemorization, updateMemorizationSection, toggleSectionCompleted, updateStudentDailyPoints } from '../../firebase/db'
+import { getStudents, subscribeMemorization, updateMemorizationSection, toggleSectionCompleted } from '../../firebase/db'
 import type { Student, MemorizationRecord } from '../../types'
 import { MEMORIZATION_LIMITS, MEMORIZATION_LABELS, MEMORIZATION_UNITS } from '../../types'
 import { calcSectionBasePoints, getProgressPercent } from '../../utils/pointsCalculator'
@@ -22,14 +22,14 @@ export default function MemorizationPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
   const [inputValues, setInputValues] = useState<Record<string, string>>({})
-  const [dailyInput, setDailyInput] = useState(0)
-  const [savingDaily, setSavingDaily] = useState(false)
+  const [displayedStudents, setDisplayedStudents] = useState<Student[]>([])
 
   const today = new Date().toISOString().split('T')[0]
 
   useEffect(() => {
     getStudents().then(s => {
       setStudents(s)
+      setDisplayedStudents(s)
       if (!selectedId && s.length > 0) setSelectedId(s[0].id)
       setLoading(false)
     })
@@ -61,6 +61,10 @@ export default function MemorizationPage() {
     setSaving(key)
     try {
       await updateMemorizationSection(selectedId, key, val, user!.id)
+      // Refresh student to get updated totalPoints + dailyPoints
+      const fresh = await getStudents()
+      setStudents(fresh)
+      setDisplayedStudents(fresh)
       toast.success('تم الحفظ')
     } catch {
       toast.error('حدث خطأ')
@@ -94,28 +98,8 @@ export default function MemorizationPage() {
     setInputValues(v => ({ ...v, [key]: String(next) }))
   }
 
-  const selectedStudent = students.find(s => s.id === selectedId)
-
-  // Load daily points when student changes — reset to 0 if date is not today
-  useEffect(() => {
-    if (!selectedStudent) return
-    const pts = selectedStudent.dailyPointsDate === today ? (selectedStudent.dailyPoints ?? 0) : 0
-    setDailyInput(pts)
-  }, [selectedId, students])
-
-  const handleSaveDaily = async () => {
-    if (!selectedId) return
-    setSavingDaily(true)
-    try {
-      await updateStudentDailyPoints(selectedId, dailyInput)
-      setStudents(prev => prev.map(s => s.id === selectedId
-        ? { ...s, dailyPoints: dailyInput, dailyPointsDate: today }
-        : s
-      ))
-      toast.success('تم حفظ نقاط اليوم')
-    } catch { toast.error('حدث خطأ') }
-    finally { setSavingDaily(false) }
-  }
+  const selectedStudent = displayedStudents.find(s => s.id === selectedId)
+  const dailyPoints = selectedStudent?.dailyPointsDate === today ? (selectedStudent.dailyPoints ?? 0) : 0
 
   if (loading) return <div className="flex justify-center p-20"><LoadingSpinner size="lg" text="جاري التحميل..." /></div>
 
@@ -143,61 +127,29 @@ export default function MemorizationPage() {
           ))}
         </select>
         {selectedStudent && (
-          <div className="mt-3 flex items-center justify-between bg-gold-xlight rounded-xl p-3 border border-gold-light">
-            <div>
-              <p className="font-bold text-brown-dark">{selectedStudent.name}</p>
-              <p className="text-xs text-brown-light">مجموعة {selectedStudent.group === 'A' ? 'أ' : 'ب'} | كود: {selectedStudent.code}</p>
+          <div className="mt-3 bg-gold-xlight rounded-xl p-3 border border-gold-light">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="font-bold text-brown-dark">{selectedStudent.name}</p>
+                <p className="text-xs text-brown-light">مجموعة {selectedStudent.group === 'A' ? 'أ' : 'ب'} | كود: {selectedStudent.code}</p>
+              </div>
             </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-brown-dark">{selectedStudent.totalPoints}</p>
-              <p className="text-xs text-brown-light">نقطة</p>
+            <div className="grid grid-cols-2 gap-3 mt-1">
+              <div className="bg-white rounded-xl p-3 text-center border border-gold-light">
+                <p className="text-2xl font-bold text-brown-dark">{selectedStudent.totalPoints}</p>
+                <p className="text-xs text-brown-light">المجموع الإجمالي</p>
+              </div>
+              <div className="bg-white rounded-xl p-3 text-center border border-gold-light">
+                <div className="flex items-center justify-center gap-1">
+                  <Sun className="h-4 w-4 text-gold" />
+                  <p className="text-2xl font-bold text-gold-dark">{dailyPoints}</p>
+                </div>
+                <p className="text-xs text-brown-light">نقاط اليوم</p>
+              </div>
             </div>
           </div>
         )}
       </div>
-
-      {/* Daily points */}
-      {selectedStudent && (
-        <div className="card border-2 border-gold-light bg-gold-xlight/30">
-          <div className="flex items-center gap-2 mb-3">
-            <Sun className="h-5 w-5 text-gold" />
-            <h2 className="font-bold text-brown-dark">نقاط اليوم</h2>
-            <span className="mr-auto text-xs text-brown-xlight">
-              {new Date().toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setDailyInput(v => Math.max(0, v - 1))}
-              className="p-2.5 rounded-xl bg-white border border-sand hover:bg-sand-light text-brown transition-colors"
-            >
-              <Minus className="h-4 w-4" />
-            </button>
-            <input
-              type="number"
-              min={0}
-              value={dailyInput === 0 ? '' : dailyInput}
-              placeholder="0"
-              onChange={e => setDailyInput(Math.max(0, Number(e.target.value) || 0))}
-              className="input-field text-center font-bold text-2xl w-28 flex-shrink-0"
-            />
-            <button
-              onClick={() => setDailyInput(v => v + 1)}
-              className="p-2.5 rounded-xl bg-white border border-sand hover:bg-sand-light text-brown transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-            <button
-              onClick={handleSaveDaily}
-              disabled={savingDaily}
-              className="btn-primary flex-1 text-sm"
-            >
-              {savingDaily ? 'جاري الحفظ...' : 'حفظ نقاط اليوم'}
-            </button>
-          </div>
-          <p className="text-xs text-brown-xlight mt-2 text-center">تُصفَّر تلقائياً في اليوم التالي</p>
-        </div>
-      )}
 
       {/* Visual book progress overview */}
       {memorization && (
