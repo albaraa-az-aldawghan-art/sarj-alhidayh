@@ -9,6 +9,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner'
 interface AttendanceState {
   studentId: string
   studentName: string
+  group: 'A' | 'B'
   present: boolean
   hasBook: boolean
   hasUniform: boolean
@@ -35,10 +36,12 @@ function formatDateAr(date: Date): string {
 
 export default function AttendancePage() {
   const { user } = useAuth()
+  const isSupervisor = user?.role === 'supervisor'
+  const teacherGroup = (user?.group as 'A' | 'B') ?? 'A'
+
   const todayDate = new Date(); todayDate.setHours(0, 0, 0, 0)
 
   const [dateVal, setDateVal] = useState(toInputValue(todayDate))
-  const [group] = useState<'A' | 'B'>((user?.group as 'A' | 'B') ?? 'A')
   const [students, setStudents] = useState<Student[]>([])
   const [attendance, setAttendance] = useState<AttendanceState[]>([])
   const [loading, setLoading] = useState(false)
@@ -53,28 +56,38 @@ export default function AttendancePage() {
     setLoading(true)
     setLoaded(false)
     try {
-      const [allStudents, dayRecs] = await Promise.all([
+      const [allStudents, recA, recB] = await Promise.all([
         getStudents(),
-        isFuture ? Promise.resolve([] as AttendanceRecord[]) : getAttendanceByDate(selectedDate, group),
+        isFuture ? Promise.resolve([] as AttendanceRecord[]) : getAttendanceByDate(selectedDate, 'A'),
+        isSupervisor && !isFuture ? getAttendanceByDate(selectedDate, 'B') : Promise.resolve([] as AttendanceRecord[]),
       ])
-      const groupStudents = allStudents.filter(s => s.group === group)
-      setStudents(groupStudents)
-      setAttendance(groupStudents.map(s => {
+
+      const dayRecs = [...recA, ...recB]
+
+      const filtered = isSupervisor
+        ? allStudents
+        : allStudents.filter(s => s.group === teacherGroup)
+
+      setStudents(filtered)
+      setAttendance(filtered.map(s => {
         const ex = dayRecs.find(r => r.studentId === s.id)
         if (ex) return {
-          studentId: s.id, studentName: s.name,
+          studentId: s.id, studentName: s.name, group: s.group,
           present: ex.present, hasBook: ex.hasBook,
           hasUniform: ex.hasUniform, reviewed: ex.reviewed,
           note: ex.note || '', existingId: ex.id,
         }
-        return { studentId: s.id, studentName: s.name, present: true, hasBook: true, hasUniform: true, reviewed: false, note: '' }
+        return {
+          studentId: s.id, studentName: s.name, group: s.group,
+          present: true, hasBook: true, hasUniform: true, reviewed: false, note: '',
+        }
       }))
       setLoaded(true)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
 
-  useEffect(() => { loadData() }, [dateVal, group])
+  useEffect(() => { loadData() }, [dateVal])
 
   const toggle = (idx: number, field: keyof Pick<AttendanceState, 'present' | 'hasBook' | 'hasUniform' | 'reviewed'>) => {
     setAttendance(a => a.map((rec, i) => i === idx ? { ...rec, [field]: !rec[field] } : rec))
@@ -91,7 +104,7 @@ export default function AttendancePage() {
           date: selectedDate, present: a.present,
           hasBook: a.hasBook, hasUniform: a.hasUniform,
           reviewed: a.reviewed, note: a.note,
-          teacherId: user!.id, teacherName: user!.name, group,
+          teacherId: user!.id, teacherName: user!.name, group: a.group,
         })))
       }
       for (const a of toUpdate) {
@@ -109,6 +122,76 @@ export default function AttendancePage() {
   const present = attendance.filter(a => a.present).length
   const absent = attendance.length - present
 
+  const renderGroup = (grp: 'A' | 'B') => {
+    const grpAttendance = attendance.filter(a => a.group === grp)
+    if (grpAttendance.length === 0) return null
+    const grpPresent = grpAttendance.filter(a => a.present).length
+    const grpAbsent = grpAttendance.length - grpPresent
+    return (
+      <div key={grp} className="space-y-3">
+        <div className="bg-gold-xlight border border-gold-light rounded-xl px-4 py-2 text-center text-sm font-bold text-brown-dark">
+          مجموعة {grp === 'A' ? 'أ' : 'ب'} — {grpPresent} حاضر / {grpAbsent} غائب
+        </div>
+        {grpAttendance.map(a => {
+          const idx = attendance.findIndex(r => r.studentId === a.studentId)
+          return (
+            <div key={a.studentId} className={`card border-2 transition-colors ${a.present ? 'border-green-200 bg-green-50/30' : 'border-red-200 bg-red-50/20'}`}>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-brown-dark text-base">{a.studentName}</h3>
+                <button
+                  onClick={() => toggle(idx, 'present')}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-sm transition-all
+                    ${a.present
+                      ? 'bg-green-100 text-green-700 border border-green-300'
+                      : 'bg-red-100 text-red-700 border border-red-300'}`}
+                >
+                  {a.present ? <><Check className="h-4 w-4" /> حاضر</> : <><X className="h-4 w-4" /> غائب</>}
+                </button>
+              </div>
+              {a.present && (
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  <button
+                    onClick={() => toggle(idx, 'hasBook')}
+                    className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-colors
+                      ${a.hasBook ? 'bg-blue-100 text-blue-700 border border-blue-300' : 'bg-sand-light text-brown-light border border-sand'}`}
+                  >
+                    <BookOpen className="h-3.5 w-3.5" />
+                    {a.hasBook ? '✓ الكتاب' : '✗ الكتاب'}
+                  </button>
+                  <button
+                    onClick={() => toggle(idx, 'hasUniform')}
+                    className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-colors
+                      ${a.hasUniform ? 'bg-purple-100 text-purple-700 border border-purple-300' : 'bg-sand-light text-brown-light border border-sand'}`}
+                  >
+                    <Shirt className="h-3.5 w-3.5" />
+                    {a.hasUniform ? '✓ الزي' : '✗ الزي'}
+                  </button>
+                  <button
+                    onClick={() => toggle(idx, 'reviewed')}
+                    className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-colors
+                      ${a.reviewed ? 'bg-gold-light/60 text-gold-dark border border-gold-light' : 'bg-sand-light text-brown-light border border-sand'}`}
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    {a.reviewed ? '✓ مراجعة' : '✗ مراجعة'}
+                  </button>
+                </div>
+              )}
+              <input
+                value={a.note}
+                onChange={e => {
+                  const note = e.target.value
+                  setAttendance(prev => prev.map((rec, i) => i === idx ? { ...rec, note } : rec))
+                }}
+                placeholder="ملاحظة (اختياري)..."
+                className="input-field text-sm py-2"
+              />
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -122,13 +205,12 @@ export default function AttendancePage() {
         )}
       </div>
 
-      {/* Step 1: Date picker */}
+      {/* Date picker */}
       <div className="card border-2 border-gold-light">
         <div className="flex items-center gap-2 mb-3">
           <CalendarDays className="h-5 w-5 text-gold" />
           <h2 className="font-bold text-brown-dark">اختر التاريخ</h2>
         </div>
-
         <div className="flex gap-3 items-center flex-wrap">
           <input
             type="date"
@@ -138,20 +220,14 @@ export default function AttendancePage() {
             className="input-field flex-1 min-w-0 text-center text-brown-dark font-semibold cursor-pointer"
           />
           {!isToday && (
-            <button
-              onClick={() => setDateVal(toInputValue(todayDate))}
-              className="btn-secondary whitespace-nowrap text-sm px-4"
-            >
+            <button onClick={() => setDateVal(toInputValue(todayDate))} className="btn-secondary whitespace-nowrap text-sm px-4">
               اليوم
             </button>
           )}
         </div>
-
-        {/* Selected date display */}
         <p className={`text-sm mt-2 text-center font-semibold ${isToday ? 'text-gold-dark' : 'text-brown'}`}>
           {isToday ? '📅 اليوم — ' : ''}{formatDateAr(selectedDate)}
         </p>
-
         {isFuture && (
           <div className="mt-3 bg-gray-100 rounded-xl p-3 text-center">
             <p className="text-gray-400 font-semibold text-sm">🔒 لا يمكن تسجيل حضور لتاريخ مستقبلي</p>
@@ -159,17 +235,19 @@ export default function AttendancePage() {
         )}
       </div>
 
-      {/* Group indicator */}
-      <div className="bg-gold-xlight border border-gold-light rounded-xl px-4 py-2 text-center text-sm font-bold text-brown-dark">
-        مجموعة {group === 'A' ? 'أ' : 'ب'}
-      </div>
+      {/* Teacher group indicator */}
+      {!isSupervisor && (
+        <div className="bg-gold-xlight border border-gold-light rounded-xl px-4 py-2 text-center text-sm font-bold text-brown-dark">
+          مجموعة {teacherGroup === 'A' ? 'أ' : 'ب'}
+        </div>
+      )}
 
-      {/* Step 3: Attendance */}
+      {/* Attendance */}
       {loading ? (
         <div className="flex justify-center p-16"><LoadingSpinner size="lg" /></div>
       ) : isFuture ? null : !loaded ? null : (
         <>
-          {/* Stats */}
+          {/* Overall stats */}
           <div className="grid grid-cols-3 gap-3">
             <div className="stat-card bg-green-50 border border-green-200">
               <p className="text-2xl font-bold text-green-700">{present}</p>
@@ -187,24 +265,26 @@ export default function AttendancePage() {
 
           {/* Quick actions */}
           <div className="flex gap-3">
-            <button
-              onClick={() => setAttendance(a => a.map(r => ({ ...r, present: true })))}
-              className="btn-secondary flex-1 text-sm"
-            >تحضير الكل</button>
-            <button
-              onClick={() => setAttendance(a => a.map(r => ({ ...r, present: false })))}
-              className="btn-secondary flex-1 text-sm"
-            >تغييب الكل</button>
+            <button onClick={() => setAttendance(a => a.map(r => ({ ...r, present: true })))} className="btn-secondary flex-1 text-sm">
+              تحضير الكل
+            </button>
+            <button onClick={() => setAttendance(a => a.map(r => ({ ...r, present: false })))} className="btn-secondary flex-1 text-sm">
+              تغييب الكل
+            </button>
           </div>
 
           {/* Student list */}
           {attendance.length === 0 ? (
-            <div className="card text-center py-8 text-brown-light">لا يوجد طلاب في هذه المجموعة</div>
+            <div className="card text-center py-8 text-brown-light">لا يوجد طلاب</div>
+          ) : isSupervisor ? (
+            <div className="space-y-6">
+              {renderGroup('A')}
+              {renderGroup('B')}
+            </div>
           ) : (
             <div className="space-y-3">
               {attendance.map((a, idx) => (
                 <div key={a.studentId} className={`card border-2 transition-colors ${a.present ? 'border-green-200 bg-green-50/30' : 'border-red-200 bg-red-50/20'}`}>
-                  {/* Name + present/absent toggle */}
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-bold text-brown-dark text-base">{a.studentName}</h3>
                     <button
@@ -217,8 +297,6 @@ export default function AttendancePage() {
                       {a.present ? <><Check className="h-4 w-4" /> حاضر</> : <><X className="h-4 w-4" /> غائب</>}
                     </button>
                   </div>
-
-                  {/* Extra fields only if present */}
                   {a.present && (
                     <div className="grid grid-cols-3 gap-2 mb-3">
                       <button
@@ -247,7 +325,6 @@ export default function AttendancePage() {
                       </button>
                     </div>
                   )}
-
                   <input
                     value={a.note}
                     onChange={e => {
