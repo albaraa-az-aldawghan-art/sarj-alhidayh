@@ -97,10 +97,10 @@ export interface WeeklyAward {
 export interface ChallengeParticipant {
   studentId: string
   studentName: string
-  sun: boolean
-  mon: boolean
-  tue: boolean
-  wed: boolean
+  sun: number
+  mon: number
+  tue: number
+  wed: number
 }
 
 export interface ChallengeGroup {

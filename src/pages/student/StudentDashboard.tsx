@@ -16,8 +16,12 @@ const DAYS = ['sun', 'mon', 'tue', 'wed'] as const
 const DAY_SHORT = ['ح', 'ن', 'ث', 'ر']
 const DAY_FULL = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء']
 
-function getChallengeStars(p: ChallengeParticipant): number {
-  return [p.sun, p.mon, p.tue, p.wed].filter(Boolean).length * 0.5
+const CHAL_DAYS = ['sun', 'mon', 'tue', 'wed'] as const
+function getChallengeScore(p: ChallengeParticipant): number {
+  return CHAL_DAYS.reduce((sum, k) => {
+    const v = Number(p[k]) || 0
+    return v > 0 ? sum + v + 0.5 : sum
+  }, 0)
 }
 
 export default function StudentDashboard() {
@@ -134,11 +138,11 @@ export default function StudentDashboard() {
           ch.groups.flatMap(g => {
             const me = g.students.find(s => s.studentId === user?.id)
             if (!me) return []
-            const myStars = getChallengeStars(me)
-            const rank = g.students.filter(s => getChallengeStars(s) > myStars).length + 1
-            const maxStars = Math.max(...g.students.map(getChallengeStars))
-            const isFirst = myStars > 0 && myStars === maxStars
-            return [{ ch, g, me, myStars, rank, isFirst }]
+            const myScore = getChallengeScore(me)
+            const rank = g.students.filter(s => getChallengeScore(s) > myScore).length + 1
+            const maxScore = Math.max(...g.students.map(getChallengeScore))
+            const isFirst = myScore > 0 && myScore === maxScore
+            return [{ ch, g, me, myScore, rank, isFirst }]
           })
         )
         if (myParts.length === 0) return null
@@ -148,7 +152,7 @@ export default function StudentDashboard() {
               <Medal className="h-5 w-5 text-gold" /> تحدياتي
             </h2>
             <div className="space-y-4">
-              {myParts.map(({ ch, g, me, myStars, rank, isFirst }) => (
+              {myParts.map(({ ch, g, me, myScore, rank, isFirst }) => (
                 <div key={`${ch.id}_${g.id}`} className={`rounded-2xl p-4 border-2 ${isFirst ? 'border-gold bg-gold-xlight/40' : 'border-sand-light bg-cream'}`}>
                   {/* Challenge + group name */}
                   <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
@@ -162,38 +166,38 @@ export default function StudentDashboard() {
                     }
                   </div>
 
-                  {/* Day dots */}
+                  {/* Day badges showing amount */}
                   <div className="flex items-center gap-2 mb-3">
-                    {DAYS.map((k, i) => (
-                      <div
-                        key={k}
-                        title={DAY_FULL[i]}
-                        className={`flex-1 py-2 rounded-xl flex flex-col items-center gap-0.5 text-xs font-bold border
-                          ${me[k] ? 'bg-gold text-brown-dark border-gold-dark' : 'bg-sand-light text-brown-xlight border-sand'}`}
-                      >
-                        <span>{DAY_SHORT[i]}</span>
-                        {me[k] ? <StarRating stars={0.5} max={1} size={14} flipHalf /> : <span className="text-brown-xlight text-xs">○</span>}
-                      </div>
-                    ))}
+                    {DAYS.map((k, i) => {
+                      const v = Number(me[k]) || 0
+                      return (
+                        <div
+                          key={k}
+                          title={DAY_FULL[i]}
+                          className={`flex-1 py-2 rounded-xl flex flex-col items-center gap-0.5 text-xs font-bold border
+                            ${v > 0 ? 'bg-gold text-brown-dark border-gold-dark' : 'bg-sand-light text-brown-xlight border-sand'}`}
+                        >
+                          <span>{DAY_SHORT[i]}</span>
+                          <span>{v > 0 ? v : '○'}</span>
+                        </div>
+                      )
+                    })}
                   </div>
 
-                  {/* Stars total + group standings */}
+                  {/* Score + group standings */}
                   <div className="flex items-center justify-between">
                     <span className="inline-flex items-center gap-1">
-                      <StarRating stars={myStars} size={20} />
-                      <span className="text-xs text-brown-light">({myStars}/2)</span>
+                      <span className="font-bold text-gold-dark text-lg">{myScore}</span>
+                      <span className="text-xs text-brown-light">نقطة تحدي</span>
                     </span>
                     <div className="text-left">
                       {g.students
                         .slice()
-                        .sort((a, b) => getChallengeStars(b) - getChallengeStars(a))
+                        .sort((a, b) => getChallengeScore(b) - getChallengeScore(a))
                         .map(s => (
                           <div key={s.studentId} className={`text-xs flex items-center gap-1.5 ${s.studentId === user?.id ? 'font-bold text-brown-dark' : 'text-brown-light'}`}>
                             <span>{s.studentName}</span>
-                            <span className="inline-flex items-center gap-0.5">
-                              <StarRating stars={getChallengeStars(s)} size={16} />
-                              <span className="text-xs text-brown-light">({getChallengeStars(s)}/2)</span>
-                            </span>
+                            <span className="font-semibold text-gold-dark">{getChallengeScore(s)} نقطة</span>
                           </div>
                         ))}
                     </div>

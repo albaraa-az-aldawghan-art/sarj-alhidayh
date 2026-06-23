@@ -3,7 +3,6 @@ import { Users, BookOpen, Star, Trophy, FileText, Award, ClipboardCheck, Medal }
 import { getPublicStats, subscribeWeeklyAwards, subscribeChallenges, getStudents } from '../../firebase/db'
 import type { WeeklyAward, Challenge, ChallengeParticipant, Student } from '../../types'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
-import StarRating from '../../components/common/StarRating'
 import Logo from '../../components/common/Logo'
 
 interface Completion {
@@ -22,15 +21,18 @@ interface Stats {
   completions: Completion[]
 }
 
-function getStars(p: ChallengeParticipant) {
-  return [p.sun, p.mon, p.tue, p.wed].filter(Boolean).length * 0.5
+function getChallengeScore(p: ChallengeParticipant) {
+  return (['sun', 'mon', 'tue', 'wed'] as const).reduce((sum, k) => {
+    const v = Number(p[k]) || 0
+    return v > 0 ? sum + v + 0.5 : sum
+  }, 0)
 }
 
-function ChallengeStars({ stars }: { stars: number }) {
+function ChallengeScore({ score }: { score: number }) {
   return (
     <span className="inline-flex items-center gap-1">
-      <StarRating stars={stars} size={20} />
-      <span className="text-xs text-brown-light">({stars}/2)</span>
+      <span className="font-bold text-gold-dark">{score}</span>
+      <span className="text-xs text-brown-light">نقطة</span>
     </span>
   )
 }
@@ -198,9 +200,9 @@ export default function PublicStatsPage() {
 
             {challenges.map(ch => {
               const groupWinners = ch.groups.map(g => {
-                const max = Math.max(...g.students.map(getStars))
-                const winners = max > 0 ? g.students.filter(s => getStars(s) === max) : []
-                return { group: g, winners, maxStars: max }
+                const max = Math.max(...g.students.map(getChallengeScore))
+                const winners = max > 0 ? g.students.filter(s => getChallengeScore(s) === max) : []
+                return { group: g, winners, maxScore: max }
               })
               const hasAnyWinner = groupWinners.some(gw => gw.winners.length > 0)
 
@@ -215,7 +217,7 @@ export default function PublicStatsPage() {
                     <p className="text-sm text-brown-light text-center py-3">التحدي جارٍ، لا يوجد فائز حتى الآن</p>
                   ) : (
                     <div className="space-y-3">
-                      {groupWinners.map(({ group, winners, maxStars }) => (
+                      {groupWinners.map(({ group, winners, maxScore }) => (
                         <div key={group.id} className="bg-gold-xlight rounded-2xl p-4 border border-gold-light">
                           <p className="text-xs font-bold text-brown-light mb-3 text-center">{group.name}</p>
                           {winners.length === 0 ? (
@@ -226,7 +228,7 @@ export default function PublicStatsPage() {
                                 <div key={w.studentId} className="bg-white/70 rounded-xl p-3 text-center border border-gold-light">
                                   <Trophy className="h-5 w-5 text-gold mx-auto mb-1.5" />
                                   <p className="font-amiri font-bold text-brown-dark text-base">{w.studentName}</p>
-                                  <ChallengeStars stars={maxStars} />
+                                  <ChallengeScore score={maxScore} />
                                 </div>
                               ))}
                             </div>
