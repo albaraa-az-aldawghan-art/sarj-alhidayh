@@ -95,6 +95,10 @@ export default function ChallengePage() {
   const [editTarget, setEditTarget] = useState<{ ch: Challenge; weekIdx: number } | null>(null)
   const [editWeek, setEditWeek] = useState<ChallengeWeek | null>(null)
 
+  // Edit group students modal
+  const [editGroupTarget, setEditGroupTarget] = useState<{ ch: Challenge; groupIdx: number } | null>(null)
+  const [editGroupStudentIds, setEditGroupStudentIds] = useState<string[]>([])
+
   useEffect(() => {
     getStudents().then(setAllStudents)
     return subscribeChallenges(ch => { setChallenges(ch); setLoading(false) })
@@ -209,6 +213,36 @@ export default function ChallengePage() {
       await resetChallengeWeek(resetTarget.id, weekLabel.trim())
       toast.success(`تم حفظ ${weekLabel} وبدء أسبوع جديد`)
       setResetTarget(null)
+    } catch { toast.error('حدث خطأ') }
+    finally { setSaving(false) }
+  }
+
+  // ── Edit group students ────────────────────────────────────────────────────────
+
+  const openEditGroup = (ch: Challenge, groupIdx: number) => {
+    setEditGroupStudentIds(ch.groups[groupIdx].students.map(s => s.studentId))
+    setEditGroupTarget({ ch, groupIdx })
+  }
+
+  const handleSaveEditGroup = async () => {
+    if (!editGroupTarget) return
+    setSaving(true)
+    try {
+      const { ch, groupIdx } = editGroupTarget
+      const group = ch.groups[groupIdx]
+      // keep existing students' data, add new ones, remove deselected
+      const updatedStudents = editGroupStudentIds.map(sid => {
+        const existing = group.students.find(s => s.studentId === sid)
+        if (existing) return existing
+        const s = allStudents.find(st => st.id === sid)!
+        return { studentId: sid, studentName: s.name, sun: 0, mon: 0, tue: 0, wed: 0 }
+      })
+      const updatedGroups = ch.groups.map((g, i) =>
+        i === groupIdx ? { ...g, students: updatedStudents } : g
+      )
+      await updateChallenge(ch.id, { groups: updatedGroups })
+      toast.success('تم تحديث المجموعة')
+      setEditGroupTarget(null)
     } catch { toast.error('حدث خطأ') }
     finally { setSaving(false) }
   }
@@ -340,13 +374,22 @@ export default function ChallengePage() {
                 {expanded && (
                   <div className="mt-4 space-y-4 border-t border-sand-light pt-4">
                     <p className="text-xs font-bold text-brown-light uppercase tracking-wide">الأسبوع الحالي</p>
-                    {ch.groups.map(group => {
+                    {ch.groups.map((group, groupIdx) => {
                       const winners = getWinners(group)
                       const sorted = [...group.students].sort((a, b) => getChallengeScore(b) - getChallengeScore(a))
                       return (
                         <div key={group.id} className="bg-cream rounded-2xl p-4 border border-sand-light">
                           <div className="flex items-center justify-between mb-3">
-                            <h3 className="font-bold text-brown-dark">{group.name}</h3>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-bold text-brown-dark">{group.name}</h3>
+                              <button
+                                onClick={() => openEditGroup(ch, groupIdx)}
+                                className="p-1 rounded-lg text-brown-light hover:bg-sand-light hover:text-brown transition-colors"
+                                title="تعديل الطلاب"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                             {winners.length > 0 && (
                               <div className="flex items-center gap-1.5 bg-gold-xlight border border-gold-light rounded-full px-3 py-1">
                                 <Trophy className="h-3.5 w-3.5 text-gold" />
@@ -523,6 +566,45 @@ export default function ChallengePage() {
             <div className="flex gap-3">
               <button onClick={handleSaveRecord} disabled={saving} className="btn-primary flex-1">{saving ? 'جاري الحفظ...' : 'حفظ'}</button>
               <button onClick={() => setRecordTarget(null)} className="btn-secondary flex-1">إلغاء</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Edit Group Students Modal */}
+      {editGroupTarget && (
+        <Modal open={true} onClose={() => setEditGroupTarget(null)} title={`تعديل طلاب — ${editGroupTarget.ch.groups[editGroupTarget.groupIdx].name}`}>
+          <div className="space-y-3 max-h-[65vh] overflow-y-auto">
+            <p className="text-xs text-brown-light">اختر الطلاب المشاركين في هذه المجموعة</p>
+            {(() => {
+              const otherGroupIds = new Set(
+                editGroupTarget.ch.groups
+                  .filter((_, i) => i !== editGroupTarget.groupIdx)
+                  .flatMap(g => g.students.map(s => s.studentId))
+              )
+              return allStudents
+                .filter(s => !otherGroupIds.has(s.id) || editGroupStudentIds.includes(s.id))
+                .map(s => (
+                  <label key={s.id} className={`flex items-center gap-3 cursor-pointer rounded-xl px-3 py-2.5 border transition-colors
+                    ${editGroupStudentIds.includes(s.id) ? 'bg-gold-xlight border-gold-light' : 'bg-cream border-sand-light hover:bg-sand-light'}`}>
+                    <input
+                      type="checkbox"
+                      checked={editGroupStudentIds.includes(s.id)}
+                      onChange={() => setEditGroupStudentIds(ids =>
+                        ids.includes(s.id) ? ids.filter(id => id !== s.id) : [...ids, s.id]
+                      )}
+                      className="w-4 h-4 rounded accent-amber-600"
+                    />
+                    <span className="font-bold text-brown-dark flex-1">{s.name}</span>
+                    <span className="text-xs text-brown-xlight">مجموعة {s.group === 'A' ? 'أ' : 'ب'}</span>
+                  </label>
+                ))
+            })()}
+            <div className="flex gap-3 pt-2 sticky bottom-0 bg-white py-2">
+              <button onClick={handleSaveEditGroup} disabled={saving || editGroupStudentIds.length < 2} className="btn-primary flex-1">
+                {saving ? 'جاري الحفظ...' : `حفظ (${editGroupStudentIds.length} طلاب)`}
+              </button>
+              <button onClick={() => setEditGroupTarget(null)} className="btn-secondary flex-1">إلغاء</button>
             </div>
           </div>
         </Modal>
