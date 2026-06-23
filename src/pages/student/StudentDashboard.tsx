@@ -209,6 +209,57 @@ export default function StudentDashboard() {
         )
       })()}
 
+      {/* Challenge Champions History */}
+      {(() => {
+        const allWeeks = challenges.flatMap(ch => ch.weekHistory ?? []).reverse()
+        if (allWeeks.length === 0) return null
+        return (
+          <div className="card border-2 border-sand-light">
+            <h2 className="font-bold text-brown-dark mb-4 flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-gold" /> أبطال تحديات الحفظ
+            </h2>
+            <div className="space-y-3">
+              {allWeeks.map((week, wi) => {
+                const gd = week.groupData ?? []
+                return (
+                  <div key={wi} className={`rounded-2xl border p-3 ${wi === 0 ? 'bg-gold-xlight/60 border-gold-light' : 'bg-cream border-sand-light'}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      {wi === 0 && <Trophy className="h-3.5 w-3.5 text-gold flex-shrink-0" />}
+                      <p className={`font-bold text-sm ${wi === 0 ? 'text-gold-dark' : 'text-brown-dark'}`}>{week.weekLabel}</p>
+                      {wi === 0 && <span className="mr-auto text-xs bg-gold text-brown-dark px-2 py-0.5 rounded-full font-bold">الأحدث</span>}
+                    </div>
+                    <div className="space-y-1.5">
+                      {gd.map(g => {
+                        if (!g.participants.length) return null
+                        const maxScore = Math.max(...g.participants.map(p => p.score))
+                        if (maxScore === 0) return null
+                        const winners = g.participants.filter(p => p.score === maxScore)
+                        const iAmWinner = winners.some(w => w.studentId === user?.id)
+                        return (
+                          <div key={g.groupId} className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs text-brown-light min-w-fit">{g.groupName}:</span>
+                            {winners.map(w => (
+                              <span key={w.studentId} className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border
+                                ${w.studentId === user?.id
+                                  ? 'bg-gold text-brown-dark border-gold-dark'
+                                  : 'bg-white border-gold-light text-gold-dark'}`}>
+                                🥇 {w.studentName}
+                                <span className={`font-normal ${w.studentId === user?.id ? 'text-brown' : 'text-brown-light'}`}>({w.score} نقطة)</span>
+                              </span>
+                            ))}
+                            {iAmWinner && <span className="text-xs text-gold-dark font-bold">🎉 أنت الفائز!</span>}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Attendance summary */}
       <div className="card">
         <h2 className="font-bold text-brown-dark mb-3 flex items-center gap-2">
