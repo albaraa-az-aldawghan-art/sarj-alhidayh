@@ -99,6 +99,11 @@ export default function ChallengePage() {
   const [editGroupTarget, setEditGroupTarget] = useState<{ ch: Challenge; groupIdx: number } | null>(null)
   const [editGroupStudentIds, setEditGroupStudentIds] = useState<string[]>([])
 
+  // Add new group to existing challenge
+  const [addGroupTarget, setAddGroupTarget] = useState<Challenge | null>(null)
+  const [newGroupName, setNewGroupName] = useState('')
+  const [newGroupStudentIds, setNewGroupStudentIds] = useState<string[]>([])
+
   useEffect(() => {
     getStudents().then(setAllStudents)
     return subscribeChallenges(ch => { setChallenges(ch); setLoading(false) })
@@ -243,6 +248,36 @@ export default function ChallengePage() {
       await updateChallenge(ch.id, { groups: updatedGroups })
       toast.success('تم تحديث المجموعة')
       setEditGroupTarget(null)
+    } catch { toast.error('حدث خطأ') }
+    finally { setSaving(false) }
+  }
+
+  // ── Add group to challenge ────────────────────────────────────────────────────
+
+  const openAddGroup = (ch: Challenge) => {
+    const nextNum = ch.groups.length + 1
+    setNewGroupName(`المجموعة ${GROUP_ARABIC[ch.groups.length] ?? nextNum}`)
+    setNewGroupStudentIds([])
+    setAddGroupTarget(ch)
+  }
+
+  const handleSaveNewGroup = async () => {
+    if (!addGroupTarget) return
+    if (!newGroupName.trim()) return toast.error('يرجى كتابة اسم المجموعة')
+    if (newGroupStudentIds.length < 2) return toast.error('المجموعة تحتاج طالبين على الأقل')
+    setSaving(true)
+    try {
+      const newGroup: ChallengeGroup = {
+        id: `g${addGroupTarget.groups.length + 1}_${Date.now()}`,
+        name: newGroupName.trim(),
+        students: newGroupStudentIds.map(sid => {
+          const s = allStudents.find(st => st.id === sid)!
+          return { studentId: sid, studentName: s.name, sun: 0, mon: 0, tue: 0, wed: 0 }
+        }),
+      }
+      await updateChallenge(addGroupTarget.id, { groups: [...addGroupTarget.groups, newGroup] })
+      toast.success('تم إضافة المجموعة')
+      setAddGroupTarget(null)
     } catch { toast.error('حدث خطأ') }
     finally { setSaving(false) }
   }
@@ -421,6 +456,18 @@ export default function ChallengePage() {
                   </div>
                 )}
 
+                {/* Add group button */}
+                {expanded && (
+                  <div className="mt-2 border-t border-sand-light pt-3">
+                    <button
+                      onClick={() => openAddGroup(ch)}
+                      className="w-full py-2.5 rounded-xl border-2 border-dashed border-sand text-brown-light hover:border-gold hover:text-gold-dark transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+                    >
+                      <Plus className="h-4 w-4" /> إضافة مجموعة جديدة
+                    </button>
+                  </div>
+                )}
+
                 {/* Week history */}
                 {weekHistory.length > 0 && (
                   <div className="mt-3 border-t border-sand-light pt-3">
@@ -566,6 +613,56 @@ export default function ChallengePage() {
             <div className="flex gap-3">
               <button onClick={handleSaveRecord} disabled={saving} className="btn-primary flex-1">{saving ? 'جاري الحفظ...' : 'حفظ'}</button>
               <button onClick={() => setRecordTarget(null)} className="btn-secondary flex-1">إلغاء</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Add New Group Modal */}
+      {addGroupTarget && (
+        <Modal open={true} onClose={() => setAddGroupTarget(null)} title={`إضافة مجموعة — ${addGroupTarget.name}`}>
+          <div className="space-y-4 max-h-[65vh] overflow-y-auto">
+            <div>
+              <label className="block text-sm font-bold text-brown mb-1.5">اسم المجموعة</label>
+              <input
+                value={newGroupName}
+                onChange={e => setNewGroupName(e.target.value)}
+                className="input-field"
+                placeholder="مثال: المجموعة الثانية"
+                autoFocus
+              />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-brown mb-2">اختر الطلاب ({newGroupStudentIds.length} محدد)</p>
+              {(() => {
+                const usedInOtherGroups = new Set(
+                  addGroupTarget.groups.flatMap(g => g.students.map(s => s.studentId))
+                )
+                const available = allStudents.filter(s => !usedInOtherGroups.has(s.id))
+                if (available.length === 0)
+                  return <p className="text-xs text-brown-xlight text-center py-4">جميع الطلاب موزّعون على المجموعات الأخرى</p>
+                return available.map(s => (
+                  <label key={s.id} className={`flex items-center gap-3 cursor-pointer rounded-xl px-3 py-2.5 border mb-1.5 transition-colors
+                    ${newGroupStudentIds.includes(s.id) ? 'bg-gold-xlight border-gold-light' : 'bg-cream border-sand-light hover:bg-sand-light'}`}>
+                    <input
+                      type="checkbox"
+                      checked={newGroupStudentIds.includes(s.id)}
+                      onChange={() => setNewGroupStudentIds(ids =>
+                        ids.includes(s.id) ? ids.filter(id => id !== s.id) : [...ids, s.id]
+                      )}
+                      className="w-4 h-4 rounded accent-amber-600"
+                    />
+                    <span className="font-bold text-brown-dark flex-1">{s.name}</span>
+                    <span className="text-xs text-brown-xlight">مجموعة {s.group === 'A' ? 'أ' : 'ب'}</span>
+                  </label>
+                ))
+              })()}
+            </div>
+            <div className="flex gap-3 pt-1 sticky bottom-0 bg-white py-2">
+              <button onClick={handleSaveNewGroup} disabled={saving || newGroupStudentIds.length < 2} className="btn-primary flex-1">
+                {saving ? 'جاري الحفظ...' : `إضافة المجموعة (${newGroupStudentIds.length} طلاب)`}
+              </button>
+              <button onClick={() => setAddGroupTarget(null)} className="btn-secondary flex-1">إلغاء</button>
             </div>
           </div>
         </Modal>
