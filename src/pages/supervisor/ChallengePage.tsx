@@ -388,6 +388,19 @@ export default function ChallengePage() {
                     )}
                     {ch.groups.length > 0 && (
                       <button
+                        onClick={async () => {
+                          if (!confirm('هل تريد حذف الأسبوع الحالي؟ لن يُحفظ في السجل.')) return
+                          await updateChallenge(ch.id, { groups: [] })
+                          toast.success('تم حذف الأسبوع الحالي')
+                        }}
+                        className="p-2 rounded-xl text-red-400 hover:bg-red-50 border border-red-200 transition-colors"
+                        title="حذف الأسبوع الحالي"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                    {ch.groups.length > 0 && (
+                      <button
                         onClick={() => setExpandedId(expanded ? null : ch.id)}
                         className="p-2 rounded-xl hover:bg-sand-light transition-colors text-brown border border-sand"
                       >
