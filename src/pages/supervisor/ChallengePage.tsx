@@ -136,10 +136,11 @@ export default function ChallengePage() {
   const usedIds = new Set(draftGroups.flatMap(g => g.studentIds))
 
   const handleCreate = async () => {
-    if (!challengeName.trim()) return toast.error('يرجى كتابة اسم التحدي')
     if (draftGroups.some(g => g.studentIds.length < 2)) return toast.error('كل مجموعة تحتاج طالبين على الأقل')
     setSaving(true)
     try {
+      const now = new Date()
+      const autoName = `تحديات الحفظ — ${now.toLocaleDateString('ar-SA', { year: 'numeric', month: 'long' })}`
       const groups: ChallengeGroup[] = draftGroups.map((g, idx) => ({
         id: `g${idx + 1}`,
         name: g.name,
@@ -149,14 +150,14 @@ export default function ChallengePage() {
         }),
       }))
       await addChallenge({
-        name: challengeName.trim(),
+        name: autoName,
         supervisorId: user!.id,
         supervisorName: user!.name,
         groups,
         weekHistory: [],
         createdAt: new Date(),
       })
-      toast.success('تم إنشاء التحدي')
+      toast.success('تم إنشاء الأسبوع الجديد')
       setShowCreate(false)
     } catch { toast.error('حدث خطأ') }
     finally { setSaving(false) }
@@ -325,7 +326,7 @@ export default function ChallengePage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="section-title mb-0">تحديات الحفظ</h1>
         <button onClick={openCreate} className="btn-primary flex items-center gap-2">
-          <Plus className="h-5 w-5" /> إضافة تحدي
+          <Plus className="h-5 w-5" /> أسبوع جديد
         </button>
       </div>
 
@@ -336,9 +337,9 @@ export default function ChallengePage() {
       {challenges.length === 0 ? (
         <div className="card text-center py-14">
           <Medal className="h-14 w-14 text-sand mx-auto mb-3" />
-          <p className="text-brown-light text-lg font-semibold mb-1">لا توجد تحديات بعد</p>
+          <p className="text-brown-light text-lg font-semibold mb-1">لا يوجد أسبوع جارٍ بعد</p>
           <button onClick={openCreate} className="btn-primary inline-flex items-center gap-2 mt-4">
-            <Plus className="h-4 w-4" /> إنشاء أول تحدي
+            <Plus className="h-4 w-4" /> إنشاء الأسبوع الأول
           </button>
         </div>
       ) : (
@@ -538,12 +539,11 @@ export default function ChallengePage() {
       )}
 
       {/* Create Modal */}
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="إضافة تحدي جديد">
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="أسبوع جديد — إنشاء المجموعات">
         <div className="space-y-4 max-h-[70vh] overflow-y-auto">
-          <div>
-            <label className="block text-sm font-bold text-brown mb-1.5">اسم التحدي</label>
-            <input value={challengeName} onChange={e => setChallengeName(e.target.value)} className="input-field" placeholder="مثال: تحدي أسبوع الفتح" autoFocus />
-          </div>
+          <p className="text-xs text-brown-light bg-cream rounded-xl px-3 py-2 border border-sand-light">
+            أضف المجموعات والطلاب لبدء الأسبوع الجديد
+          </p>
           {draftGroups.map((g, gi) => (
             <div key={gi} className="bg-cream rounded-2xl p-3 border border-sand-light">
               <div className="flex items-center gap-2 mb-3">
@@ -572,7 +572,7 @@ export default function ChallengePage() {
             <Plus className="h-4 w-4" /> إضافة مجموعة أخرى
           </button>
           <div className="flex gap-3 pt-1 sticky bottom-0 bg-white py-2">
-            <button onClick={handleCreate} disabled={saving} className="btn-primary flex-1">{saving ? 'جاري الحفظ...' : 'إنشاء التحدي'}</button>
+            <button onClick={handleCreate} disabled={saving} className="btn-primary flex-1">{saving ? 'جاري الحفظ...' : 'بدء الأسبوع'}</button>
             <button onClick={() => setShowCreate(false)} className="btn-secondary flex-1">إلغاء</button>
           </div>
         </div>
