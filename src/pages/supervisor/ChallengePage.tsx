@@ -364,15 +364,19 @@ export default function ChallengePage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-                    <button onClick={() => openRecord(ch)} className="btn-secondary text-sm flex items-center gap-1.5 py-2">
-                      <BookOpen className="h-4 w-4" /> تسجيل يوم
-                    </button>
-                    <button
-                      onClick={() => openReset(ch)}
-                      className="text-sm flex items-center gap-1.5 py-2 px-3 rounded-xl border border-sand bg-parchment text-brown hover:bg-sand-light transition-colors font-semibold"
-                    >
-                      <RotateCcw className="h-4 w-4" /> إنهاء الأسبوع
-                    </button>
+                    {ch.groups.length > 0 && (
+                      <button onClick={() => openRecord(ch)} className="btn-secondary text-sm flex items-center gap-1.5 py-2">
+                        <BookOpen className="h-4 w-4" /> تسجيل يوم
+                      </button>
+                    )}
+                    {ch.groups.length > 0 && (
+                      <button
+                        onClick={() => openReset(ch)}
+                        className="text-sm flex items-center gap-1.5 py-2 px-3 rounded-xl border border-sand bg-parchment text-brown hover:bg-sand-light transition-colors font-semibold"
+                      >
+                        <RotateCcw className="h-4 w-4" /> إنهاء الأسبوع
+                      </button>
+                    )}
                     <button
                       onClick={() => setExpandedId(expanded ? null : ch.id)}
                       className="p-2 rounded-xl hover:bg-sand-light transition-colors text-brown border border-sand"
@@ -409,6 +413,13 @@ export default function ChallengePage() {
                 {expanded && (
                   <div className="mt-4 space-y-4 border-t border-sand-light pt-4">
                     <p className="text-xs font-bold text-brown-light uppercase tracking-wide">الأسبوع الحالي</p>
+                    {ch.groups.length === 0 && (
+                      <div className="text-center py-6 text-brown-xlight">
+                        <Trophy className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                        <p className="text-sm font-semibold">تم إنهاء الأسبوع</p>
+                        <p className="text-xs mt-1">أضف مجموعات للأسبوع الجديد من الزر أدناه</p>
+                      </div>
+                    )}
                     {ch.groups.map((group, groupIdx) => {
                       const winners = getWinners(group)
                       const sorted = [...group.students].sort((a, b) => getChallengeScore(b) - getChallengeScore(a))
@@ -782,7 +793,7 @@ export default function ChallengePage() {
         <Modal open={true} onClose={() => setResetTarget(null)} title={`إنهاء الأسبوع — ${resetTarget.name}`}>
           <div className="space-y-4">
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
-              سيتم حفظ نتائج الأسبوع الحالي في السجل وإعادة تصفير النقاط لبدء أسبوع جديد.
+              سيتم حفظ نتائج الأسبوع الحالي في السجل وحذف المجموعات. لبدء أسبوع جديد أضف مجموعات جديدة.
             </div>
             <div>
               <label className="block text-sm font-bold text-brown mb-1.5">اسم الأسبوع</label>

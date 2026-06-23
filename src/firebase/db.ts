@@ -474,13 +474,8 @@ export async function resetChallengeWeek(id: string, weekLabel: string): Promise
     })),
   }))
 
-  const resetGroups = groups.map(g => ({
-    ...g,
-    students: g.students.map(s => ({ ...s, sun: 0, mon: 0, tue: 0, wed: 0 })),
-  }))
-
   await updateDoc(ref, {
-    groups: resetGroups,
+    groups: [],
     weekHistory: [...existing, { weekLabel, groupData }],
   })
 }
