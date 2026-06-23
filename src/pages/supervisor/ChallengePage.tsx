@@ -359,8 +359,10 @@ export default function ChallengePage() {
                     <div className="min-w-0">
                       <h2 className="font-bold text-brown-dark text-lg truncate">{ch.name}</h2>
                       <p className="text-xs text-brown-light">
-                        {ch.groups.length} مجموعات • الأسبوع الحالي
-                        {weekHistory.length > 0 && ` • ${weekHistory.length} أسبوع مكتمل`}
+                        {ch.groups.length > 0
+                          ? `${ch.groups.length} مجموعات • الأسبوع الحالي`
+                          : 'مكتمل'}
+                        {weekHistory.length > 0 && ` • ${weekHistory.length} أسبوع في السجل`}
                       </p>
                     </div>
                   </div>
@@ -410,17 +412,10 @@ export default function ChallengePage() {
                   </div>
                 )}
 
-                {/* Current week standings */}
-                {expanded && (
+                {/* Current week standings — only when groups exist */}
+                {expanded && ch.groups.length > 0 && (
                   <div className="mt-4 space-y-4 border-t border-sand-light pt-4">
                     <p className="text-xs font-bold text-brown-light uppercase tracking-wide">الأسبوع الحالي</p>
-                    {ch.groups.length === 0 && (
-                      <div className="text-center py-6 text-brown-xlight">
-                        <Trophy className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                        <p className="text-sm font-semibold">تم إنهاء الأسبوع</p>
-                        <p className="text-xs mt-1">أضف مجموعات للأسبوع الجديد من الزر أدناه</p>
-                      </div>
-                    )}
                     {ch.groups.map((group, groupIdx) => {
                       const winners = getWinners(group)
                       const sorted = [...group.students].sort((a, b) => getChallengeScore(b) - getChallengeScore(a))
@@ -468,14 +463,14 @@ export default function ChallengePage() {
                   </div>
                 )}
 
-                {/* Add group button */}
-                {expanded && (
+                {/* Add group button — only when week is active */}
+                {expanded && ch.groups.length > 0 && (
                   <div className="mt-2 border-t border-sand-light pt-3">
                     <button
                       onClick={() => openAddGroup(ch)}
                       className="w-full py-2.5 rounded-xl border-2 border-dashed border-sand text-brown-light hover:border-gold hover:text-gold-dark transition-colors text-sm font-semibold flex items-center justify-center gap-2"
                     >
-                      <Plus className="h-4 w-4" /> إضافة مجموعة جديدة
+                      <Plus className="h-4 w-4" /> إضافة مجموعة
                     </button>
                   </div>
                 )}
