@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, Trophy, BookOpen, ChevronDown, ChevronUp, Medal, RotateCcw, Clock } from 'lucide-react'
+import { Plus, Trash2, Trophy, BookOpen, ChevronDown, ChevronUp, Medal, RotateCcw, Clock, Pencil } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
   getStudents, subscribeChallenges, addChallenge, updateChallenge, deleteChallenge, resetChallengeWeek,
 } from '../../firebase/db'
-import type { Student, Challenge, ChallengeGroup, ChallengeParticipant } from '../../types'
+import type { Student, Challenge, ChallengeGroup, ChallengeParticipant, ChallengeWeek } from '../../types'
 import { useAuth } from '../../contexts/AuthContext'
 import Modal from '../../components/common/Modal'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
@@ -83,6 +83,10 @@ export default function ChallengePage() {
   // Reset week modal
   const [resetTarget, setResetTarget] = useState<Challenge | null>(null)
   const [weekLabel, setWeekLabel] = useState('')
+
+  // Edit week modal
+  const [editTarget, setEditTarget] = useState<{ ch: Challenge; weekIdx: number } | null>(null)
+  const [editWeek, setEditWeek] = useState<ChallengeWeek | null>(null)
 
   useEffect(() => {
     getStudents().then(setAllStudents)
@@ -200,6 +204,36 @@ export default function ChallengePage() {
       setResetTarget(null)
     } catch { toast.error('حدث خطأ') }
     finally { setSaving(false) }
+  }
+
+  // ── Edit week ─────────────────────────────────────────────────────────────────
+
+  const openEditWeek = (ch: Challenge, weekIdx: number) => {
+    setEditTarget({ ch, weekIdx })
+    setEditWeek(JSON.parse(JSON.stringify(ch.weekHistory[weekIdx])) as ChallengeWeek)
+  }
+
+  const handleSaveEditWeek = async () => {
+    if (!editTarget || !editWeek) return
+    setSaving(true)
+    try {
+      const newHistory = [...editTarget.ch.weekHistory]
+      newHistory[editTarget.weekIdx] = editWeek
+      await updateChallenge(editTarget.ch.id, { weekHistory: newHistory })
+      toast.success('تم التعديل')
+      setEditTarget(null)
+      setEditWeek(null)
+    } catch { toast.error('حدث خطأ') }
+    finally { setSaving(false) }
+  }
+
+  const handleDeleteWeek = async (ch: Challenge, weekIdx: number) => {
+    if (!confirm('هل تريد حذف هذا الأسبوع من السجل؟')) return
+    try {
+      const newHistory = ch.weekHistory.filter((_, i) => i !== weekIdx)
+      await updateChallenge(ch.id, { weekHistory: newHistory })
+      toast.success('تم حذف الأسبوع')
+    } catch { toast.error('حدث خطأ') }
   }
 
   const handleDelete = async (id: string) => {
@@ -350,12 +384,30 @@ export default function ChallengePage() {
                     </button>
                     {historyExpanded && (
                       <div className="mt-3 space-y-3">
-                        {[...weekHistory].reverse().map((week, i) => (
-                          <div key={i} className="bg-cream rounded-xl p-3 border border-sand-light">
-                            <p className="font-bold text-brown-dark text-sm mb-2">{week.weekLabel}</p>
+                        {weekHistory.map((week, weekIdx) => (
+                          <div key={weekIdx} className="bg-cream rounded-xl p-3 border border-sand-light">
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="font-bold text-brown-dark text-sm">{week.weekLabel}</p>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => openEditWeek(ch, weekIdx)}
+                                  className="p-1.5 rounded-lg text-brown-light hover:bg-sand-light hover:text-brown transition-colors"
+                                  title="تعديل"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteWeek(ch, weekIdx)}
+                                  className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors"
+                                  title="حذف"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
                             <div className="space-y-1">
                               {week.groupWinners.map(gw => (
-                                <div key={gw.groupId} className="flex items-center gap-2 text-xs">
+                                <div key={gw.groupId} className="flex items-center gap-2 text-xs flex-wrap">
                                   <span className="text-brown-light">{gw.groupName}:</span>
                                   {gw.winners.length === 0
                                     ? <span className="text-brown-xlight">لا يوجد فائز</span>
@@ -466,6 +518,59 @@ export default function ChallengePage() {
             <div className="flex gap-3">
               <button onClick={handleSaveRecord} disabled={saving} className="btn-primary flex-1">{saving ? 'جاري الحفظ...' : 'حفظ'}</button>
               <button onClick={() => setRecordTarget(null)} className="btn-secondary flex-1">إلغاء</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Edit Week Modal */}
+      {editTarget && editWeek && (
+        <Modal open={true} onClose={() => { setEditTarget(null); setEditWeek(null) }} title={`تعديل — ${editWeek.weekLabel}`}>
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+            <div>
+              <label className="block text-sm font-bold text-brown mb-1.5">اسم الأسبوع</label>
+              <input
+                value={editWeek.weekLabel}
+                onChange={e => setEditWeek(w => w ? { ...w, weekLabel: e.target.value } : w)}
+                className="input-field"
+              />
+            </div>
+            {editWeek.groupWinners.map((gw, gi) => (
+              <div key={gw.groupId} className="bg-cream rounded-2xl p-3 border border-sand-light">
+                <p className="font-bold text-brown-dark text-sm mb-3">{gw.groupName}</p>
+                {gw.winners.length === 0
+                  ? <p className="text-xs text-brown-xlight text-center py-2">لا يوجد فائز مسجّل</p>
+                  : gw.winners.map((w, wi) => (
+                    <div key={w.studentId} className="flex items-center gap-3 mb-2">
+                      <span className="flex-1 font-bold text-brown-dark text-sm">{w.studentName}</span>
+                      <input
+                        type="number" min={0} step={0.5}
+                        value={w.score}
+                        onChange={e => {
+                          const score = Number(e.target.value) || 0
+                          setEditWeek(prev => {
+                            if (!prev) return prev
+                            const gws = prev.groupWinners.map((g2, gIdx) => {
+                              if (gIdx !== gi) return g2
+                              const ws = g2.winners.map((w2, wIdx) => wIdx === wi ? { ...w2, score } : w2)
+                              return { ...g2, winners: ws }
+                            })
+                            return { ...prev, groupWinners: gws }
+                          })
+                        }}
+                        className="input-field w-24 text-center py-1.5 text-sm"
+                      />
+                      <span className="text-xs text-brown-light w-10">نقطة</span>
+                    </div>
+                  ))
+                }
+              </div>
+            ))}
+            <div className="flex gap-3">
+              <button onClick={handleSaveEditWeek} disabled={saving} className="btn-primary flex-1">
+                {saving ? 'جاري الحفظ...' : 'حفظ التعديلات'}
+              </button>
+              <button onClick={() => { setEditTarget(null); setEditWeek(null) }} className="btn-secondary flex-1">إلغاء</button>
             </div>
           </div>
         </Modal>

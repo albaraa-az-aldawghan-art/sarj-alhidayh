@@ -190,59 +190,6 @@ export default function PublicStatsPage() {
           </div>
         )}
 
-        {/* Challenge weekly winners history */}
-        {challenges.some(ch => (ch.weekHistory ?? []).length > 0) && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 px-1">
-              <Medal className="h-5 w-5 text-gold" />
-              <h2 className="font-bold text-brown-dark text-lg">أبطال تحديات الحفظ</h2>
-            </div>
-
-            {challenges.map(ch => {
-              const history = ch.weekHistory ?? []
-              if (history.length === 0) return null
-              return (
-                <div key={ch.id} className="card border-2 border-gold-light">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Trophy className="h-5 w-5 text-gold" />
-                    <h3 className="font-bold text-brown-dark text-lg">{ch.name}</h3>
-                  </div>
-                  <div className="space-y-3">
-                    {[...history].reverse().map((week, i) => (
-                      <div key={i} className={`rounded-2xl p-4 border ${i === 0 ? 'bg-gold-xlight border-gold' : 'bg-cream border-sand-light'}`}>
-                        <div className="flex items-center gap-2 mb-3">
-                          {i === 0 && <Star className="h-4 w-4 text-gold" />}
-                          <p className={`font-bold text-sm ${i === 0 ? 'text-gold-dark' : 'text-brown-dark'}`}>{week.weekLabel}</p>
-                          {i === 0 && <span className="mr-auto text-xs bg-gold text-brown-dark px-2 py-0.5 rounded-full font-bold">الأحدث</span>}
-                        </div>
-                        <div className="space-y-2">
-                          {week.groupWinners.map(gw => (
-                            <div key={gw.groupId}>
-                              <p className="text-xs text-brown-light mb-1">{gw.groupName}</p>
-                              {gw.winners.length === 0 ? (
-                                <p className="text-xs text-brown-xlight">لا يوجد فائز</p>
-                              ) : (
-                                <div className={`grid gap-2 ${gw.winners.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                                  {gw.winners.map(w => (
-                                    <div key={w.studentId} className="bg-white/70 rounded-xl p-3 text-center border border-gold-light">
-                                      <Trophy className="h-4 w-4 text-gold mx-auto mb-1" />
-                                      <p className="font-amiri font-bold text-brown-dark text-sm">{w.studentName}</p>
-                                      <ChallengeScore score={w.score} />
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
 
         {/* General Rankings */}
         {students.length > 0 && (
