@@ -224,6 +224,59 @@ export default function PublicStatsPage() {
           </div>
         )}
 
+        {/* Challenge Champions */}
+        {(() => {
+          // Collect all weeks from all challenges, sorted newest first
+          const allWeeks: { weekLabel: string; groupData: Challenge['weekHistory'][number]['groupData'] }[] = []
+          challenges.forEach(ch => {
+            ;(ch.weekHistory ?? []).forEach(w => allWeeks.push(w))
+          })
+          if (allWeeks.length === 0) return null
+          // Sort: latest week (highest index / last added) first
+          const sorted = [...allWeeks].reverse()
+          return (
+            <div className="card">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-2 h-6 bg-gold rounded-full" />
+                <h2 className="font-bold text-brown-dark text-lg">أبطال تحديات الحفظ</h2>
+              </div>
+              <div className="space-y-3">
+                {sorted.map((week, wi) => {
+                  const gd = week.groupData ?? []
+                  return (
+                    <div key={wi} className={`rounded-2xl border p-3 ${wi === 0 ? 'bg-gold-xlight/60 border-gold-light' : 'bg-cream border-sand-light'}`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        {wi === 0 && <Trophy className="h-4 w-4 text-gold flex-shrink-0" />}
+                        <p className={`font-bold text-sm ${wi === 0 ? 'text-gold-dark' : 'text-brown-dark'}`}>{week.weekLabel}</p>
+                        {wi === 0 && <span className="mr-auto text-xs bg-gold text-brown-dark px-2 py-0.5 rounded-full font-bold">الأحدث</span>}
+                      </div>
+                      <div className="space-y-1.5">
+                        {gd.map(g => {
+                          if (!g.participants.length) return null
+                          const maxScore = Math.max(...g.participants.map(p => p.score))
+                          if (maxScore === 0) return null
+                          const winners = g.participants.filter(p => p.score === maxScore)
+                          return (
+                            <div key={g.groupId} className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs text-brown-light min-w-fit">{g.groupName}:</span>
+                              {winners.map(w => (
+                                <span key={w.studentId} className="inline-flex items-center gap-1 bg-white border border-gold-light text-gold-dark font-bold text-xs px-2.5 py-1 rounded-full">
+                                  🥇 {w.studentName}
+                                  <span className="text-brown-light font-normal">({w.score} نقطة)</span>
+                                </span>
+                              ))}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
+
         {/* Footer */}
         <div className="text-center py-4">
           <p className="text-xs text-brown-xlight">سرج الهداية • نظام إدارة نقاط الطلاب</p>
