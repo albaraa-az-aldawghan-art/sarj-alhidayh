@@ -394,9 +394,6 @@ export default function ChallengePage() {
                         {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </button>
                     )}
-                    <button onClick={() => handleDelete(ch.id)} className="p-2 rounded-xl text-red-400 hover:bg-red-50 transition-colors">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
                   </div>
                 </div>
 
