@@ -199,7 +199,7 @@ export default function PublicStatsPage() {
               <h2 className="font-bold text-brown-dark text-lg">الترتيب العام</h2>
             </div>
             <div className="space-y-2">
-              {students.map((s, i) => {
+              {students.slice(0, 5).map((s, i) => {
                 const rank = i + 1
                 const rankBadge = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null
                 return (

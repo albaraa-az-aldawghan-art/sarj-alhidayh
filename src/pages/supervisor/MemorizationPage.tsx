@@ -28,9 +28,13 @@ export default function MemorizationPage() {
 
   useEffect(() => {
     getStudents().then(s => {
-      setStudents(s)
-      setDisplayedStudents(s)
-      if (!selectedId && s.length > 0) setSelectedId(s[0].id)
+      // Show supervisor's own students first, then others
+      const mine = s.filter(st => st.supervisorId === user?.id)
+      const others = s.filter(st => st.supervisorId !== user?.id)
+      const sorted = [...mine, ...others]
+      setStudents(sorted)
+      setDisplayedStudents(sorted)
+      if (!selectedId && sorted.length > 0) setSelectedId(sorted[0].id)
       setLoading(false)
     })
   }, [])
