@@ -399,19 +399,6 @@ export default function ChallengePage() {
                         <Trash2 className="h-4 w-4" />
                       </button>
                     )}
-                    {ch.groups.length === 0 && (
-                      <button
-                        onClick={async () => {
-                          if (!confirm('هل تريد حذف هذه البطاقة بالكامل؟')) return
-                          await deleteChallenge(ch.id)
-                          toast.success('تم الحذف')
-                        }}
-                        className="p-2 rounded-xl text-red-400 hover:bg-red-50 border border-red-200 transition-colors"
-                        title="حذف البطاقة"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
                     {ch.groups.length > 0 && (
                       <button
                         onClick={() => setExpandedId(expanded ? null : ch.id)}
