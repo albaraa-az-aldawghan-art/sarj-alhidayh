@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, Trash2, Edit2, Search, BookOpen } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { getStudents, getSupervisors, addStudent, updateStudent, deleteStudent } from '../../firebase/db'
+import { getStudents, getSupervisors, addStudent, updateStudent, deleteStudent, getAllAbsences } from '../../firebase/db'
 import type { Student, Supervisor } from '../../types'
 import Modal from '../../components/common/Modal'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
+
+type AbsenceMap = Map<string, { count: number; dates: Date[] }>
 
 export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([])
@@ -17,14 +19,23 @@ export default function StudentsPage() {
   const [editStudent, setEditStudent] = useState<Student | null>(null)
   const [form, setForm] = useState({ name: '', code: '', group: 'A' as 'A' | 'B', supervisorId: '' })
   const [saving, setSaving] = useState(false)
+  const [absenceMap, setAbsenceMap] = useState<AbsenceMap>(new Map())
 
   const load = async () => {
-    const [s, sup] = await Promise.all([getStudents(), getSupervisors()])
+    const [s, sup, absRecs] = await Promise.all([getStudents(), getSupervisors(), getAllAbsences()])
     setStudents(s)
     setSupervisors(sup)
     if (sup.length > 0 && !form.supervisorId) {
       setForm(f => ({ ...f, supervisorId: sup[0].id }))
     }
+    const map: AbsenceMap = new Map()
+    for (const r of absRecs) {
+      const d = r.date instanceof Date ? r.date : new Date(r.date)
+      const ex = map.get(r.studentId)
+      if (ex) { ex.count++; ex.dates.push(d) }
+      else map.set(r.studentId, { count: 1, dates: [d] })
+    }
+    setAbsenceMap(map)
     setLoading(false)
   }
 
@@ -131,12 +142,13 @@ export default function StudentsPage() {
                 <th className="table-header">المجموعة</th>
                 <th className="table-header">المشرف</th>
                 <th className="table-header">النقاط</th>
+                <th className="table-header">الغياب</th>
                 <th className="table-header">إجراءات</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-8 text-brown-light">لا يوجد طلاب</td></tr>
+                <tr><td colSpan={8} className="text-center py-8 text-brown-light">لا يوجد طلاب</td></tr>
               ) : filtered.map((s, i) => {
                 const rank = students.findIndex(st => st.id === s.id) + 1
                 const sup = supervisors.find(sv => sv.id === s.supervisorId)
@@ -148,6 +160,27 @@ export default function StudentsPage() {
                     <td className="table-cell">{s.group === 'A' ? 'مجموعة أ' : 'مجموعة ب'}</td>
                     <td className="table-cell text-brown">{sup?.name || '-'}</td>
                     <td className="table-cell font-bold text-brown-dark">{s.totalPoints}</td>
+                    <td className="table-cell">
+                      {(() => {
+                        const info = absenceMap.get(s.id)
+                        if (!info || info.count === 0) return <span className="text-xs text-gray-400">لم يغب</span>
+                        const sorted = [...info.dates].sort((a, b) => b.getTime() - a.getTime())
+                        return (
+                          <div>
+                            <span className="inline-block bg-red-100 text-red-700 font-bold text-xs px-2 py-0.5 rounded-lg border border-red-200 mb-1">
+                              {info.count} {info.count === 1 ? 'مرة' : 'مرات'}
+                            </span>
+                            <div className="space-y-0.5">
+                              {sorted.map((d, i) => (
+                                <div key={i} className="text-xs text-red-500">
+                                  {d.toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long' })}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      })()}
+                    </td>
                     <td className="table-cell">
                       <div className="flex items-center gap-2">
                         <Link

@@ -310,6 +310,23 @@ export async function updateAttendanceRecord(id: string, data: Partial<Attendanc
   await updateDoc(doc(db, 'attendance', id), data)
 }
 
+export async function getAllAbsences(): Promise<AttendanceRecord[]> {
+  const snap = await getDocs(collection(db, 'attendance'))
+  return snap.docs
+    .map(d => mapDoc<AttendanceRecord>(d))
+    .filter(r => r.present === false)
+}
+
+export async function clearAllAttendance(): Promise<void> {
+  const snap = await getDocs(collection(db, 'attendance'))
+  const docs = snap.docs
+  for (let i = 0; i < docs.length; i += 500) {
+    const batch = writeBatch(db)
+    docs.slice(i, i + 500).forEach(d => batch.delete(d.ref))
+    await batch.commit()
+  }
+}
+
 // ─── Schedule Notes ───────────────────────────────────────────────────────────
 
 export async function getScheduleNotes(group: 'A' | 'B'): Promise<ScheduleNote[]> {
