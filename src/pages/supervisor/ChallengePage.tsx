@@ -357,57 +357,61 @@ export default function ChallengePage() {
             return (
               <div key={ch.id} className="card border-2 border-sand-light">
                 {/* Header */}
-                <div className="flex items-start justify-between gap-3 flex-wrap">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="p-2.5 bg-gold-xlight rounded-xl flex-shrink-0">
-                      <Trophy className="h-5 w-5 text-gold" />
+                <div className="flex flex-col gap-3">
+                  {/* Title row */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="p-2.5 bg-gold-xlight rounded-xl flex-shrink-0">
+                        <Trophy className="h-5 w-5 text-gold" />
+                      </div>
+                      <div className="min-w-0">
+                        <h2 className="font-bold text-brown-dark text-lg truncate">تحديات الحفظ</h2>
+                        <p className="text-xs text-brown-light">
+                          {ch.groups.length > 0
+                            ? `${ch.groups.length} مجموعات • الأسبوع الحالي`
+                            : 'مكتمل'}
+                          {weekHistory.length > 0 && ` • ${weekHistory.length} أسبوع في السجل`}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <h2 className="font-bold text-brown-dark text-lg truncate">تحديات الحفظ</h2>
-                      <p className="text-xs text-brown-light">
-                        {ch.groups.length > 0
-                          ? `${ch.groups.length} مجموعات • الأسبوع الحالي`
-                          : 'مكتمل'}
-                        {weekHistory.length > 0 && ` • ${weekHistory.length} أسبوع في السجل`}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-                    {ch.groups.length > 0 && (
-                      <button onClick={() => openRecord(ch)} className="btn-secondary text-sm flex items-center gap-1.5 py-2">
-                        <BookOpen className="h-4 w-4" /> تسجيل يوم
-                      </button>
-                    )}
                     {ch.groups.length > 0 && (
                       <button
+                        onClick={() => setExpandedId(expanded ? null : ch.id)}
+                        className="p-2 rounded-xl hover:bg-sand-light transition-colors text-brown border border-sand flex-shrink-0"
+                      >
+                        {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Action buttons row */}
+                  {ch.groups.length > 0 && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => openRecord(ch)}
+                        className="btn-secondary text-sm flex items-center justify-center gap-1.5 py-2.5 flex-1"
+                      >
+                        <BookOpen className="h-4 w-4" /> تسجيل يوم
+                      </button>
+                      <button
                         onClick={() => openReset(ch)}
-                        className="text-sm flex items-center gap-1.5 py-2 px-3 rounded-xl border border-sand bg-parchment text-brown hover:bg-sand-light transition-colors font-semibold"
+                        className="text-sm flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-sand bg-parchment text-brown hover:bg-sand-light transition-colors font-semibold flex-1"
                       >
                         <RotateCcw className="h-4 w-4" /> إنهاء الأسبوع
                       </button>
-                    )}
-                    {ch.groups.length > 0 && (
                       <button
                         onClick={async () => {
                           if (!confirm('هل تريد حذف الأسبوع الحالي؟ لن يُحفظ في السجل.')) return
                           await updateChallenge(ch.id, { groups: [] })
                           toast.success('تم حذف الأسبوع الحالي')
                         }}
-                        className="p-2 rounded-xl text-red-400 hover:bg-red-50 border border-red-200 transition-colors"
+                        className="p-2.5 rounded-xl text-red-400 hover:bg-red-50 border border-red-200 transition-colors flex-shrink-0"
                         title="حذف الأسبوع الحالي"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
-                    )}
-                    {ch.groups.length > 0 && (
-                      <button
-                        onClick={() => setExpandedId(expanded ? null : ch.id)}
-                        className="p-2 rounded-xl hover:bg-sand-light transition-colors text-brown border border-sand"
-                      >
-                        {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Quick summary */}
