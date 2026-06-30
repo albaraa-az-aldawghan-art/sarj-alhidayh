@@ -98,7 +98,7 @@ export default function AttendancePage() {
     try {
       const [allStudents, recA, recB] = await Promise.all([
         getStudents(),
-        isFuture ? Promise.resolve([] as AttendanceRecord[]) : getAttendanceByDate(selectedDate, 'A'),
+        isFuture ? Promise.resolve([] as AttendanceRecord[]) : getAttendanceByDate(selectedDate, isSupervisor ? 'A' : teacherGroup),
         isSupervisor && !isFuture ? getAttendanceByDate(selectedDate, 'B') : Promise.resolve([] as AttendanceRecord[]),
       ])
 

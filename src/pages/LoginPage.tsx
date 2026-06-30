@@ -38,7 +38,7 @@ export default function LoginPage() {
       } else if (role === 'teacher') {
         const teacher = await loginTeacher(name, code)
         if (!teacher) { toast.error('الاسم أو الكود غير صحيح'); return }
-        const teacherGroup: 'A' | 'B' = teacher.circle === 'ب' ? 'B' : 'A'
+        const teacherGroup: 'A' | 'B' = teacher.circle.trim().includes('ب') ? 'B' : 'A'
         login({ id: teacher.id, role: 'teacher', name: teacher.name, code: teacher.code, supervisorId: teacher.supervisorId, group: teacherGroup })
         navigate('/teacher')
       } else {
