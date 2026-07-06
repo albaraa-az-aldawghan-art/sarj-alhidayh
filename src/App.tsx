@@ -24,6 +24,7 @@ import AwardsPage from './pages/supervisor/AwardsPage'
 import RankingsPage from './pages/supervisor/RankingsPage'
 import QRCodePage from './pages/supervisor/QRCodePage'
 import ChallengePage from './pages/supervisor/ChallengePage'
+import AchievementsPage from './pages/supervisor/AchievementsPage'
 
 // Teacher pages
 import TeacherDashboard from './pages/teacher/TeacherDashboard'
@@ -81,6 +82,7 @@ function AppRoutes() {
         <Route path="challenges" element={<ChallengePage />} />
         <Route path="rankings" element={<RankingsPage />} />
         <Route path="qrcode" element={<QRCodePage />} />
+        <Route path="achievements" element={<AchievementsPage />} />
       </Route>
 
       {/* Teacher routes */}

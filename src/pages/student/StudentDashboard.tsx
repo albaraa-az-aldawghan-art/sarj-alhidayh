@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Trophy, Star, BookOpen, CheckCircle, XCircle, Book, Shirt, RefreshCw, Medal } from 'lucide-react'
+import { Trophy, Star, BookOpen, CheckCircle, XCircle, Book, Shirt, RefreshCw, Medal, Award } from 'lucide-react'
 import StarRating from '../../components/common/StarRating'
 import { useAuth } from '../../contexts/AuthContext'
 import {
   getStudents, subscribeMemorization, subscribeWeeklyAwards,
   getStudentAttendance, getScheduleNotes, getScheduleConfig, subscribeChallenges, getTeachers, getSupervisors,
+  subscribeAchievements,
 } from '../../firebase/db'
-import type { MemorizationRecord, WeeklyAward, AttendanceRecord, ScheduleNote, ScheduleConfig, Challenge, ChallengeParticipant, Teacher } from '../../types'
+import type { MemorizationRecord, WeeklyAward, AttendanceRecord, ScheduleNote, ScheduleConfig, Challenge, ChallengeParticipant, Teacher, Achievement } from '../../types'
 import { MEMORIZATION_LIMITS, MEMORIZATION_LABELS, MEMORIZATION_UNITS, DAY_LABELS } from '../../types'
 import { calcSectionBasePoints } from '../../utils/pointsCalculator'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
@@ -32,6 +33,7 @@ export default function StudentDashboard() {
   const [notes, setNotes] = useState<ScheduleNote[]>([])
   const [config, setConfig] = useState<ScheduleConfig>({ group: 'A', sun: 'فقه', mon: 'فقه', tue: 'نحو', wed: 'نحو' })
   const [challenges, setChallenges] = useState<Challenge[]>([])
+  const [achievements, setAchievements] = useState<Achievement[]>([])
   const [myTeachers, setMyTeachers] = useState<Teacher[]>([])
   const [supervisorName, setSupervisorName] = useState<string>('')
   const [globalRank, setGlobalRank] = useState<number>(0)
@@ -70,8 +72,9 @@ export default function StudentDashboard() {
     const unsubMem = subscribeMemorization(user.id, setMemorization)
     const unsubAwards = subscribeWeeklyAwards(setAwards)
     const unsubChallenges = subscribeChallenges(setChallenges)
+    const unsubAchievements = subscribeAchievements(setAchievements)
 
-    return () => { unsubMem(); unsubAwards(); unsubChallenges() }
+    return () => { unsubMem(); unsubAwards(); unsubChallenges(); unsubAchievements() }
   }, [user])
 
   if (loading) return <div className="flex justify-center p-20"><LoadingSpinner size="lg" text="جاري التحميل..." /></div>
@@ -344,6 +347,25 @@ export default function StudentDashboard() {
                 </div>
               )
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Achievements */}
+      {achievements.length > 0 && (
+        <div className="card">
+          <h2 className="font-bold text-brown-dark mb-4 flex items-center gap-2">
+            <Award className="h-5 w-5 text-gold" /> إنجازات المستوى
+          </h2>
+          <div className="space-y-4">
+            {achievements.map(a => (
+              <div key={a.id} className="rounded-2xl overflow-hidden border border-sand-light">
+                <img src={a.imageUrl} alt="إنجاز" className="w-full h-44 object-cover" loading="lazy" />
+                <div className="p-3 bg-cream">
+                  <p className="text-brown-dark font-semibold leading-relaxed">{a.description}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

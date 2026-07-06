@@ -3,10 +3,11 @@ import {
   updateDoc, deleteDoc, query, where, orderBy, Timestamp,
   onSnapshot, writeBatch, serverTimestamp,
 } from 'firebase/firestore'
-import { db } from './config'
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
+import { db, storage } from './config'
 import type {
   Supervisor, Teacher, Student, MemorizationRecord, MemorizationSection,
-  AttendanceRecord, ScheduleNote, ScheduleConfig, WeeklyAward, Challenge,
+  AttendanceRecord, ScheduleNote, ScheduleConfig, WeeklyAward, Challenge, Achievement,
 } from '../types'
 import { calcTotalPoints } from '../utils/pointsCalculator'
 import { getWeekStart, getWeekEnd } from '../utils/dateHelpers'
@@ -517,4 +518,56 @@ export async function resetChallengeWeek(id: string, weekLabel: string): Promise
     groups: [],
     weekHistory: [...existing, { weekLabel, groupData }],
   })
+}
+
+// ─── Achievements ─────────────────────────────────────────────────────────────
+
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB
+
+export async function uploadAchievementImage(file: File): Promise<{ url: string; path: string }> {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    throw new Error('نوع الملف غير مسموح. يُقبل فقط: JPG، PNG، WebP، GIF')
+  }
+  if (file.size > MAX_IMAGE_SIZE) {
+    throw new Error('حجم الصورة يجب أن يكون أقل من 5MB')
+  }
+  // Validate magic bytes (first 4 bytes) to prevent disguised files
+  const header = await file.slice(0, 4).arrayBuffer()
+  const bytes = new Uint8Array(header)
+  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+  const isValidImage =
+    hex.startsWith('ffd8ff') ||           // JPEG
+    hex.startsWith('89504e47') ||          // PNG
+    hex.startsWith('47494638') ||          // GIF
+    hex.startsWith('52494646')             // WebP (RIFF)
+  if (!isValidImage) throw new Error('الملف تالف أو ليس صورة حقيقية')
+
+  // UUID-based filename — never user-controlled
+  const ext = file.type.split('/')[1].replace('jpeg', 'jpg')
+  const safeName = `${crypto.randomUUID()}.${ext}`
+  const path = `achievements/${safeName}`
+
+  const storageRef = ref(storage, path)
+  await uploadBytes(storageRef, file, { contentType: file.type })
+  const url = await getDownloadURL(storageRef)
+  return { url, path }
+}
+
+export function subscribeAchievements(cb: (items: Achievement[]) => void) {
+  const q = query(collection(db, 'achievements'), orderBy('createdAt', 'desc'))
+  return onSnapshot(q, snap => cb(snap.docs.map(d => mapDoc<Achievement>(d))))
+}
+
+export async function addAchievement(data: Omit<Achievement, 'id'>): Promise<void> {
+  await addDoc(collection(db, 'achievements'), { ...data, createdAt: serverTimestamp() })
+}
+
+export async function deleteAchievement(id: string, imagePath: string): Promise<void> {
+  await deleteDoc(doc(db, 'achievements', id))
+  try {
+    await deleteObject(ref(storage, imagePath))
+  } catch {
+    // Storage file might not exist; Firestore doc is already deleted
+  }
 }

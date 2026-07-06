@@ -132,6 +132,16 @@ export interface Challenge {
   createdAt: Date
 }
 
+export interface Achievement {
+  id: string
+  imageUrl: string
+  imagePath: string
+  description: string
+  supervisorId: string
+  supervisorName: string
+  createdAt: Date
+}
+
 export interface AuthUser {
   id: string
   role: UserRole

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Users, BookOpen, Star, Trophy, FileText, Award, ClipboardCheck, Medal } from 'lucide-react'
-import { getPublicStats, subscribeWeeklyAwards, subscribeChallenges, getStudents } from '../../firebase/db'
-import type { WeeklyAward, Challenge, ChallengeParticipant, Student } from '../../types'
+import { getPublicStats, subscribeWeeklyAwards, subscribeChallenges, getStudents, subscribeAchievements } from '../../firebase/db'
+import type { WeeklyAward, Challenge, ChallengeParticipant, Student, Achievement } from '../../types'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import Logo from '../../components/common/Logo'
 
@@ -42,6 +42,7 @@ export default function PublicStatsPage() {
   const [awards, setAwards] = useState<WeeklyAward[]>([])
   const [challenges, setChallenges] = useState<Challenge[]>([])
   const [students, setStudents] = useState<Student[]>([])
+  const [achievements, setAchievements] = useState<Achievement[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -51,7 +52,8 @@ export default function PublicStatsPage() {
       .finally(() => setLoading(false))
     const u1 = subscribeWeeklyAwards(setAwards)
     const u2 = subscribeChallenges(setChallenges)
-    return () => { u1(); u2() }
+    const u3 = subscribeAchievements(setAchievements)
+    return () => { u1(); u2(); u3() }
   }, [])
 
   if (loading) return (
@@ -276,6 +278,29 @@ export default function PublicStatsPage() {
             </div>
           )
         })()}
+
+        {/* Achievements */}
+        {achievements.length > 0 && (
+          <div className="card">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-2 h-6 bg-gold rounded-full" />
+              <h2 className="font-bold text-brown-dark text-lg">إنجازات المستوى</h2>
+              <span className="mr-auto bg-gold-xlight text-gold-dark text-xs font-bold px-2 py-0.5 rounded-full border border-gold-light">
+                {achievements.length}
+              </span>
+            </div>
+            <div className="space-y-4">
+              {achievements.map(a => (
+                <div key={a.id} className="rounded-2xl overflow-hidden border border-sand-light">
+                  <img src={a.imageUrl} alt="إنجاز" className="w-full h-48 object-cover" loading="lazy" />
+                  <div className="p-3 bg-cream">
+                    <p className="text-brown-dark font-semibold leading-relaxed">{a.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="text-center py-4">

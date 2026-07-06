@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, BookOpen, GraduationCap, ClipboardList,
-  Calendar, Trophy, BarChart3, QrCode, Shield, Medal,
+  Calendar, Trophy, BarChart3, QrCode, Shield, Medal, Award,
   Menu, X, LogOut, ChevronLeft,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -20,6 +20,7 @@ const navItems = [
   { to: '/supervisor/challenges', label: 'تحديات الحفظ', icon: Medal },
   { to: '/supervisor/rankings', label: 'الترتيب العام', icon: BarChart3 },
   { to: '/supervisor/qrcode', label: 'الباركود', icon: QrCode },
+  { to: '/supervisor/achievements', label: 'إنجازات المستوى', icon: Award },
 ]
 
 export default function SupervisorLayout() {
