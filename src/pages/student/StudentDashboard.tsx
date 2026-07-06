@@ -360,7 +360,7 @@ export default function StudentDashboard() {
           <div className="space-y-4">
             {achievements.map(a => (
               <div key={a.id} className="rounded-2xl overflow-hidden border border-sand-light">
-                <img src={a.imageUrl} alt="إنجاز" className="w-full h-44 object-cover" loading="lazy" />
+                <img src={a.imageUrl} alt="إنجاز" className="w-full max-h-72 object-contain bg-sand-light" loading="lazy" />
                 <div className="p-3 bg-cream">
                   <p className="text-brown-dark font-semibold leading-relaxed">{a.description}</p>
                 </div>
