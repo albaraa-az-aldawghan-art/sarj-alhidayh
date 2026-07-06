@@ -122,7 +122,7 @@ export default function AchievementsPage() {
               ${preview ? 'border-gold-light' : 'border-sand hover:border-gold-light'}`}
           >
             {preview ? (
-              <img src={preview} alt="معاينة" className="w-full max-h-64 object-contain bg-sand-light" />
+              <img src={preview} alt="معاينة" className="w-full h-auto block" />
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-brown-light gap-2">
                 <ImagePlus className="h-10 w-10" />
@@ -197,7 +197,7 @@ export default function AchievementsPage() {
                 <img
                   src={a.imageUrl}
                   alt="إنجاز"
-                  className="w-full max-h-72 object-contain bg-sand-light"
+                  className="w-full h-auto block"
                   loading="lazy"
                 />
                 <button
