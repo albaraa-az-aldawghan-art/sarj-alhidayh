@@ -3,8 +3,7 @@ import {
   updateDoc, deleteDoc, query, where, orderBy, Timestamp,
   onSnapshot, writeBatch, serverTimestamp,
 } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
-import { db, storage } from './config'
+import { db } from './config'
 import type {
   Supervisor, Teacher, Student, MemorizationRecord, MemorizationSection,
   AttendanceRecord, ScheduleNote, ScheduleConfig, WeeklyAward, Challenge, Achievement,
@@ -522,6 +521,11 @@ export async function resetChallengeWeek(id: string, weekLabel: string): Promise
 
 // ─── Achievements ─────────────────────────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const _env = (import.meta as any).env
+const CLOUDINARY_CLOUD_NAME: string = _env.VITE_CLOUDINARY_CLOUD_NAME
+const CLOUDINARY_UPLOAD_PRESET: string = _env.VITE_CLOUDINARY_UPLOAD_PRESET
+
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB
 
@@ -537,21 +541,27 @@ export async function uploadAchievementImage(file: File): Promise<{ url: string;
   const bytes = new Uint8Array(header)
   const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
   const isValidImage =
-    hex.startsWith('ffd8ff') ||           // JPEG
-    hex.startsWith('89504e47') ||          // PNG
-    hex.startsWith('47494638') ||          // GIF
-    hex.startsWith('52494646')             // WebP (RIFF)
+    hex.startsWith('ffd8ff') ||    // JPEG
+    hex.startsWith('89504e47') ||  // PNG
+    hex.startsWith('47494638') ||  // GIF
+    hex.startsWith('52494646')     // WebP (RIFF)
   if (!isValidImage) throw new Error('الملف تالف أو ليس صورة حقيقية')
 
-  // UUID-based filename — never user-controlled
-  const ext = file.type.split('/')[1].replace('jpeg', 'jpg')
-  const safeName = `${crypto.randomUUID()}.${ext}`
-  const path = `achievements/${safeName}`
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET)
+  formData.append('folder', 'achievements')
 
-  const storageRef = ref(storage, path)
-  await uploadBytes(storageRef, file, { contentType: file.type })
-  const url = await getDownloadURL(storageRef)
-  return { url, path }
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+    method: 'POST',
+    body: formData,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { error?: { message?: string } }).error?.message || 'فشل رفع الصورة')
+  }
+  const data = await res.json() as { secure_url: string; public_id: string }
+  return { url: data.secure_url, path: data.public_id }
 }
 
 export function subscribeAchievements(cb: (items: Achievement[]) => void) {
@@ -563,11 +573,6 @@ export async function addAchievement(data: Omit<Achievement, 'id'>): Promise<voi
   await addDoc(collection(db, 'achievements'), { ...data, createdAt: serverTimestamp() })
 }
 
-export async function deleteAchievement(id: string, imagePath: string): Promise<void> {
+export async function deleteAchievement(id: string, _imagePath: string): Promise<void> {
   await deleteDoc(doc(db, 'achievements', id))
-  try {
-    await deleteObject(ref(storage, imagePath))
-  } catch {
-    // Storage file might not exist; Firestore doc is already deleted
-  }
 }
