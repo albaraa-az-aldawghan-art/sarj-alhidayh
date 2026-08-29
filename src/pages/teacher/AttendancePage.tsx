@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Check, X, BookOpen, Shirt, RefreshCw, Save, CalendarDays, BarChart2, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { getStudents, getAttendanceByDate, saveAttendance, updateAttendanceRecord, getAllAbsences, clearAllAttendance } from '../../firebase/db'
+import { getStudents, getAttendanceByDate, saveAttendance, updateAttendanceRecord, getAllAbsences, getAllAttendance, clearAllAttendance } from '../../firebase/db'
 import type { Student, AttendanceRecord } from '../../types'
 import { useAuth } from '../../contexts/AuthContext'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
@@ -18,15 +18,54 @@ interface AttendanceState {
   existingId?: string
 }
 
-interface AbsenceInfo {
-  studentId: string
-  studentName: string
-  group: 'A' | 'B'
+type AbsenceMap = Map<string, { count: number; dates: Date[] }>
+
+type IssueKey = 'absent' | 'noBook' | 'noUniform' | 'noReview'
+
+interface IssueBucket {
   count: number
   dates: Date[]
 }
 
-type AbsenceMap = Map<string, { count: number; dates: Date[] }>
+interface StudentReport {
+  studentId: string
+  studentName: string
+  group: 'A' | 'B'
+  absent: IssueBucket
+  noBook: IssueBucket
+  noUniform: IssueBucket
+  noReview: IssueBucket
+  total: number
+}
+
+const ISSUE_META: Record<IssueKey, { label: string; Icon: typeof X; cls: string; pill: string }> = {
+  absent: {
+    label: 'غياب',
+    Icon: X,
+    cls: 'bg-red-100 text-red-700 border-red-300',
+    pill: 'bg-red-50 text-red-600 border-red-200',
+  },
+  noBook: {
+    label: 'بدون كتاب',
+    Icon: BookOpen,
+    cls: 'bg-blue-100 text-blue-700 border-blue-300',
+    pill: 'bg-blue-50 text-blue-600 border-blue-200',
+  },
+  noUniform: {
+    label: 'بدون زي',
+    Icon: Shirt,
+    cls: 'bg-purple-100 text-purple-700 border-purple-300',
+    pill: 'bg-purple-50 text-purple-600 border-purple-200',
+  },
+  noReview: {
+    label: 'بدون مراجعة',
+    Icon: RefreshCw,
+    cls: 'bg-gold-light/50 text-gold-dark border-gold-light',
+    pill: 'bg-gold-xlight text-gold-dark border-gold-light',
+  },
+}
+
+const ISSUE_KEYS = Object.keys(ISSUE_META) as IssueKey[]
 
 function toInputValue(date: Date): string {
   const y = date.getFullYear()
@@ -75,8 +114,9 @@ export default function AttendancePage() {
   const [loaded, setLoaded] = useState(false)
   const [absenceMap, setAbsenceMap] = useState<AbsenceMap>(new Map())
   const [absenceMapLoaded, setAbsenceMapLoaded] = useState(false)
-  const [absenceData, setAbsenceData] = useState<AbsenceInfo[] | null>(null)
-  const [absenceLoading, setAbsenceLoading] = useState(false)
+  const [reportData, setReportData] = useState<StudentReport[] | null>(null)
+  const [reportLoading, setReportLoading] = useState(false)
+  const [openMap, setOpenMap] = useState<Record<string, IssueKey | null>>({})
   const [resetting, setResetting] = useState(false)
 
   const selectedDate = fromInputValue(dateVal)
@@ -164,30 +204,55 @@ export default function AttendancePage() {
     finally { setSaving(false) }
   }
 
-  const loadAbsences = async () => {
-    setAbsenceLoading(true)
+  const loadReport = async () => {
+    setReportLoading(true)
     try {
-      const recs = await getAllAbsences()
-      const map = buildAbsenceMap(recs)
-      setAbsenceMap(map)
-      const result: AbsenceInfo[] = Array.from(map.entries()).map(([studentId, info]) => {
-        const s = students.find(st => st.id === studentId)
-        return {
-          studentId,
-          studentName: s?.name ?? recs.find(r => r.studentId === studentId)?.studentName ?? '—',
-          group: s?.group ?? (recs.find(r => r.studentId === studentId)?.group ?? 'A'),
-          count: info.count,
-          dates: [...info.dates].sort((a, b) => b.getTime() - a.getTime()),
+      const recs = await getAllAttendance()
+      const map = new Map<string, StudentReport>()
+      for (const r of recs) {
+        const d = r.date instanceof Date ? r.date : new Date(r.date)
+        let rep = map.get(r.studentId)
+        if (!rep) {
+          const s = students.find(st => st.id === r.studentId)
+          rep = {
+            studentId: r.studentId,
+            studentName: s?.name ?? r.studentName ?? '—',
+            group: s?.group ?? r.group ?? 'A',
+            absent: { count: 0, dates: [] },
+            noBook: { count: 0, dates: [] },
+            noUniform: { count: 0, dates: [] },
+            noReview: { count: 0, dates: [] },
+            total: 0,
+          }
+          map.set(r.studentId, rep)
         }
-      })
-      setAbsenceData(result)
-    } catch { toast.error('حدث خطأ في تحميل سجل الغياب') }
-    finally { setAbsenceLoading(false) }
+        // Absence day: counts only towards غياب.
+        // Book / uniform / review are only meaningful on days the student attended.
+        if (r.present === false) {
+          rep.absent.count++; rep.absent.dates.push(d)
+        } else {
+          if (r.hasBook === false) { rep.noBook.count++; rep.noBook.dates.push(d) }
+          if (r.hasUniform === false) { rep.noUniform.count++; rep.noUniform.dates.push(d) }
+          if (r.reviewed === false) { rep.noReview.count++; rep.noReview.dates.push(d) }
+        }
+      }
+      const result = Array.from(map.values())
+        .map(rep => {
+          for (const k of ISSUE_KEYS) rep[k].dates.sort((a, b) => b.getTime() - a.getTime())
+          rep.total = rep.absent.count + rep.noBook.count + rep.noUniform.count + rep.noReview.count
+          return rep
+        })
+        .filter(rep => rep.total > 0)
+      setReportData(result)
+      setAbsenceMap(buildAbsenceMap(recs.filter(r => r.present === false)))
+      setAbsenceMapLoaded(true)
+    } catch { toast.error('حدث خطأ في تحميل السجل') }
+    finally { setReportLoading(false) }
   }
 
   const switchView = (v: 'attendance' | 'absences') => {
     setView(v)
-    if (v === 'absences') loadAbsences()
+    if (v === 'absences') loadReport()
   }
 
   const handleReset = async () => {
@@ -196,7 +261,8 @@ export default function AttendancePage() {
     try {
       await clearAllAttendance()
       toast.success('تم تصفير سجلات الحضور بنجاح')
-      setAbsenceData([])
+      setReportData([])
+      setOpenMap({})
       setAbsenceMap(new Map())
       await loadData()
     } catch { toast.error('حدث خطأ') }
@@ -335,45 +401,93 @@ export default function AttendancePage() {
             }`}
           >
             <BarChart2 className="h-4 w-4" />
-            سجل الغياب
+            سجل المتابعة
           </button>
         </div>
       )}
 
-      {/* Absence report tab */}
+      {/* Student follow-up report tab */}
       {view === 'absences' && (
         <div className="space-y-4">
-          {absenceLoading ? (
-            <div className="flex justify-center p-12"><LoadingSpinner size="lg" text="جاري تحميل سجل الغياب..." /></div>
-          ) : absenceData === null ? null : absenceData.length === 0 ? (
-            <div className="card text-center py-8 text-brown-light">لا يوجد غياب مسجل</div>
+          {reportLoading ? (
+            <div className="flex justify-center p-12"><LoadingSpinner size="lg" text="جاري تحميل السجل..." /></div>
+          ) : reportData === null ? null : reportData.length === 0 ? (
+            <div className="card text-center py-8 text-brown-light">لا توجد ملاحظات مسجلة</div>
           ) : (
             <>
+              {/* Totals across all students */}
+              <div className="grid grid-cols-4 gap-2">
+                {ISSUE_KEYS.map(key => {
+                  const meta = ISSUE_META[key]
+                  const Icon = meta.Icon
+                  const total = reportData.reduce((sum, r) => sum + r[key].count, 0)
+                  return (
+                    <div key={key} className={`rounded-xl p-2 text-center border ${meta.cls}`}>
+                      <Icon className="h-4 w-4 mx-auto mb-0.5" />
+                      <p className="text-lg font-bold leading-none">{total}</p>
+                      <p className="text-[11px] leading-tight mt-0.5">{meta.label}</p>
+                    </div>
+                  )
+                })}
+              </div>
+
               {(['A', 'B'] as const).map(grp => {
-                const grpData = absenceData.filter(a => a.group === grp).sort((a, b) => b.count - a.count)
+                const grpData = reportData.filter(a => a.group === grp).sort((a, b) => b.total - a.total)
                 if (grpData.length === 0) return null
                 return (
                   <div key={grp} className="space-y-3">
                     <div className="bg-gold-xlight border border-gold-light rounded-xl px-4 py-2 text-center text-sm font-bold text-brown-dark">
                       مجموعة {grp === 'A' ? 'أ' : 'ب'}
                     </div>
-                    {grpData.map(a => (
-                      <div key={a.studentId} className="card border-2 border-red-100">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-bold text-brown-dark">{a.studentName}</h3>
-                          <span className="bg-red-100 text-red-700 font-bold text-sm px-3 py-1 rounded-xl border border-red-200">
-                            {a.count} {a.count === 1 ? 'غيابة' : 'غيابات'}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5 mt-1">
-                          {a.dates.map((d, i) => (
-                            <span key={i} className="text-xs bg-red-50 text-red-600 border border-red-200 px-2.5 py-1 rounded-full">
-                              {d.toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long' })}
+                    {grpData.map(a => {
+                      const openKey = openMap[a.studentId] ?? null
+                      return (
+                        <div key={a.studentId} className="card border-2 border-sand-light">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="font-bold text-brown-dark">{a.studentName}</h3>
+                            <span className="text-xs bg-sand-light text-brown border border-sand px-2 py-0.5 rounded-lg font-bold">
+                              {a.total} {a.total === 1 ? 'ملاحظة' : 'ملاحظات'}
                             </span>
-                          ))}
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            {ISSUE_KEYS.map(key => {
+                              const bucket = a[key]
+                              const meta = ISSUE_META[key]
+                              const Icon = meta.Icon
+                              const disabled = bucket.count === 0
+                              const isOpen = openKey === key
+                              return (
+                                <button
+                                  key={key}
+                                  disabled={disabled}
+                                  onClick={() => setOpenMap(m => ({ ...m, [a.studentId]: isOpen ? null : key }))}
+                                  className={`flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all
+                                    ${disabled ? 'bg-sand-light text-brown-xlight border-sand' : meta.cls}
+                                    ${isOpen ? 'ring-2 ring-gold ring-offset-1' : ''}`}
+                                >
+                                  <span className="flex items-center gap-1.5"><Icon className="h-3.5 w-3.5" /> {meta.label}</span>
+                                  <span>{bucket.count}</span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                          {openKey && (
+                            <div className="mt-2.5 pt-2.5 border-t border-sand-light">
+                              <p className="text-xs font-bold text-brown-light mb-1.5">
+                                {ISSUE_META[openKey].label} — {a[openKey].count} {a[openKey].count === 1 ? 'يوم' : 'أيام'}
+                              </p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {a[openKey].dates.map((d, i) => (
+                                  <span key={i} className={`text-xs px-2.5 py-1 rounded-full border ${ISSUE_META[openKey].pill}`}>
+                                    {d.toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long' })}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )
               })}

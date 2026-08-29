@@ -317,6 +317,11 @@ export async function getAllAbsences(): Promise<AttendanceRecord[]> {
     .filter(r => r.present === false)
 }
 
+export async function getAllAttendance(): Promise<AttendanceRecord[]> {
+  const snap = await getDocs(collection(db, 'attendance'))
+  return snap.docs.map(d => mapDoc<AttendanceRecord>(d))
+}
+
 export async function clearAllAttendance(): Promise<void> {
   const snap = await getDocs(collection(db, 'attendance'))
   const docs = snap.docs
